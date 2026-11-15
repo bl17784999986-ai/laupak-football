@@ -99,6 +99,15 @@
         <a href="https://m.leisu.com/data/zuqiu/calc_jc" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 text-violet-400 border border-slate-700/70 transition">
           雷速竞彩计算器 ↗
         </a>
+        <a href="https://m.sporttery.cn/mjc/jsq/zqspf/" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 text-emerald-400 border border-slate-700/70 transition">
+          竞彩网计算器 ↗
+        </a>
+        <a href="https://m.sporttery.cn/mjc/zqsj/?tab=result" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 text-rose-400 border border-slate-700/70 transition">
+          竞彩赛果开奖 ↗
+        </a>
+        <a href="https://m.leisu.com/live" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 text-teal-400 border border-slate-700/70 transition">
+          雷速即时比分 ↗
+        </a>
       </div>
       <div class="text-[11px] text-slate-500">
         分析准则：客观中立 · 拒绝“稳赢/必胜”绝对化用词 · 优先采信最新盘口与伤停情报
@@ -413,13 +422,16 @@
         <button id="btnCloseImport" type="button" class="text-slate-400 hover:text-white text-lg">✕</button>
       </div>
       <p class="text-xs text-slate-400 leading-relaxed">
-        支持粘贴来自 <code class="text-sky-400">cp.zgzcw.com</code>、<code class="text-amber-400">live.nowscore.com/2in1.aspx</code> 或 <code class="text-violet-400">m.leisu.com/data/zuqiu/calc_jc</code> 的比赛行文本，或手动输入自定义赛事数据，系统将自动提取赔率并生成四维推盘分析。
+        支持粘贴来自 <code class="text-sky-400">cp.zgzcw.com</code>、<code class="text-emerald-400">m.sporttery.cn</code>、<code class="text-teal-400">m.leisu.com/live</code> 或 <code class="text-amber-400">live.nowscore.com</code> 的赛事赔率行或完场赛果文本（如：<code class="text-slate-200">周日001 町田泽维 1:0 神户胜利</code>），可自动同步赛果比分或导入新赛事。
       </p>
       <div class="space-y-3 text-xs">
         <div>
           <label class="block text-slate-300 mb-1">一键粘贴网页行文本 (自动识别队名、让球、胜平负赔率)</label>
           <textarea id="txtPasteRaw" rows="3" placeholder="例如：周日 010 欧国联 03:45 西班牙 [1] VS 英格兰 [4] 0 1.67 3.70 3.70 -1 3.21 3.29 1.91" class="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500"></textarea>
-          <div class="mt-1.5 flex justify-end">
+          <div class="mt-1.5 flex justify-end gap-2">
+            <button id="btnSyncScoresFromText" type="button" class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition">
+              ⚽ 批量同步赛果比分
+            </button>
             <button id="btnAutoParseRaw" type="button" class="px-3 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium transition">
               ⚡ 智能提取字段
             </button>
@@ -829,7 +841,11 @@
     let expandedMatchIds = { sun010: true };
 
     let reviewRecords = [];
-    let matchResults = {}; // { [matchId]: { homeGoals, awayGoals, htHome, htAway } }
+    let matchResults = {
+      sun002: { homeGoals: 3, awayGoals: 2 },
+      sun003: { homeGoals: 1, awayGoals: 1 },
+      sun004: { homeGoals: 5, awayGoals: 4 }
+    };
 
     // Load saved ticket & review records safely
     try {
@@ -838,7 +854,7 @@
       const savedRev = localStorage.getItem('jc_sim_reviews_v1');
       if (savedRev) reviewRecords = JSON.parse(savedRev);
       const savedRes = localStorage.getItem('jc_sim_results_v1');
-      if (savedRes) matchResults = JSON.parse(savedRes);
+      if (savedRes) matchResults = { ...matchResults, ...JSON.parse(savedRes) };
     } catch (e) {}
 
     function saveReviewRecords() {
@@ -2083,6 +2099,40 @@
     };
     document.getElementById('btnCloseImport').addEventListener('click', closeModal);
     document.getElementById('btnCancelImport').addEventListener('click', closeModal);
+
+    document.getElementById('btnSyncScoresFromText').addEventListener('click', () => {
+      const raw = document.getElementById('txtPasteRaw').value.trim();
+      if (!raw) { showToast('请先粘贴包含赛果比分的文本'); return; }
+      const lines = raw.split(/\r?\n/);
+      let matched = 0;
+      let settledLegs = 0;
+      lines.forEach(line => {
+        const scoreM = line.match(/(\d{1,2})\s*[:\-]\s*(\d{1,2})/);
+        if (!scoreM) return;
+        const hg = parseInt(scoreM[1], 10);
+        const ag = parseInt(scoreM[2], 10);
+        const m = matches.find(x =>
+          line.includes(x.code.replace(/\s+/g, '')) ||
+          line.includes(x.code) ||
+          (line.includes(x.home) && line.includes(x.away))
+        );
+        if (m) {
+          matchResults[m.id] = { homeGoals: hg, awayGoals: ag };
+          settledLegs += settleReviewLegsFromScore(m, hg, ag);
+          matched++;
+        }
+      });
+      if (matched > 0) {
+        saveMatchResults();
+        renderMatchList();
+        renderAnalysisWorkspace();
+        renderRecommendedCombos();
+        closeModal();
+        showToast(`已同步 ${matched} 场完场比分` + (settledLegs > 0 ? `，自动核对 ${settledLegs} 条复盘记录` : ''));
+      } else {
+        showToast('未识别到匹配的赛事与比分格式（示例：周日001 町田泽维 1:0 神户胜利）');
+      }
+    });
 
     document.getElementById('btnAutoParseRaw').addEventListener('click', () => {
       const raw = document.getElementById('txtPasteRaw').value.trim();
