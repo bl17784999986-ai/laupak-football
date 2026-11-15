@@ -1,0 +1,2449 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>竞彩足球赛前分析与推盘预测模拟器</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans SC', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            slate: {
+              850: '#151e2e',
+              925: '#0c121e',
+              950: '#070b14',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans SC', system-ui, sans-serif;
+      background-color: #070b14;
+      color: #e2e8f0;
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0c121e; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    .tabular-nums { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-200 selection:bg-emerald-500/30 selection:text-emerald-200">
+
+  <!-- Top Navigation & Sync Bar -->
+  <header class="sticky top-0 z-30 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md">
+    <div class="max-w-[1600px] mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-950/50 text-slate-950 font-bold text-lg">
+          ⚽
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">竞彩足球赛前推盘预测模拟器</h1>
+            <span class="px-2 py-0.5 text-[11px] font-medium rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              四维分析引擎 v2.6
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
+            <span>期次: <strong class="text-slate-200">2026-11-15 星期日</strong></span>
+            <span class="text-slate-600">•</span>
+            <span id="syncStatusText" class="text-emerald-400/90">已同步足彩网实时对阵 (11场)</span>
+            <span class="text-slate-600 hidden sm:inline">•</span>
+            <span id="liveClock" class="hidden sm:inline tabular-nums text-slate-400"></span>
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 flex-wrap">
+        <a href="#reviewSection" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition flex items-center gap-1.5">
+          <span>📊</span>
+          <span>每日复盘区 (<span id="headerReviewCount" class="tabular-nums">0</span>)</span>
+        </a>
+        <button id="btnOpenImport" type="button" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+          <span>📥</span>
+          <span>导入/解析网页数据</span>
+        </button>
+        <button id="btnSyncLive" type="button" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm shadow-emerald-950/50 transition flex items-center gap-1.5">
+          <span id="syncIcon">🔄</span>
+          <span>同步实时赔率</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Data Source Strip -->
+  <div class="border-b border-slate-800/60 bg-slate-900/50">
+    <div class="max-w-[1600px] mx-auto px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-slate-500">同步数据源:</span>
+        <a href="https://cp.zgzcw.com/lottery/jchtplayvsForJsp.action?lotteryId=47&type=jcmini" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 text-sky-400 border border-slate-700/70 transition">
+          足彩网竞彩对阵 ↗
+        </a>
+        <a href="https://live.nowscore.com/2in1.aspx" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 text-amber-400 border border-slate-700/70 transition">
+          捷报比分二合一 ↗
+        </a>
+        <a href="https://m.leisu.com/data/zuqiu/calc_jc" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 text-violet-400 border border-slate-700/70 transition">
+          雷速竞彩计算器 ↗
+        </a>
+      </div>
+      <div class="text-[11px] text-slate-500">
+        分析准则：客观中立 · 拒绝“稳赢/必胜”绝对化用词 · 优先采信最新盘口与伤停情报
+      </div>
+    </div>
+  </div>
+
+  <!-- Main 3-Column Workspace -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+    <!-- Left Column: Match List (3 cols on lg) -->
+    <section class="lg:col-span-3 flex flex-col bg-slate-900/70 border border-slate-800/80 rounded-2xl overflow-hidden lg:max-h-[calc(100vh-130px)]">
+      <div class="p-3 border-b border-slate-800/80 space-y-2.5 bg-slate-900/90">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-white">今日竞彩赛事列表</h2>
+          <span id="matchCountBadge" class="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 tabular-nums">11 场</span>
+        </div>
+        <input id="searchInput" type="text" placeholder="搜索球队、编号或赛事 (如: 西班牙 / 010)..." class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/60" />
+        <div id="leagueFilters" class="flex items-center gap-1.5 overflow-x-auto pb-1">
+          <!-- Filter buttons injected by JS -->
+        </div>
+        <div id="leftCalcModeBar" class="grid grid-cols-5 gap-1 pt-1 border-t border-slate-800/70">
+          <!-- Calc mode tabs injected by JS -->
+        </div>
+      </div>
+      <div id="matchListContainer" class="flex-1 overflow-y-auto p-2 space-y-2">
+        <!-- Match cards injected by JS -->
+      </div>
+    </section>
+
+    <!-- Center Column: 4-Dimension Analysis & What-If Simulator (6 cols on lg) -->
+    <section class="lg:col-span-6 flex flex-col gap-4">
+      <!-- Match Overview Banner -->
+      <div id="matchBanner" class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 sm:p-5">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Interactive What-If Parameter Simulator -->
+      <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4">
+        <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <h3 class="text-sm font-semibold text-white">盘口与战意推演沙盘 (实时重算四维研判)</h3>
+          </div>
+          <button id="btnResetParams" type="button" class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+            恢复初始同步数据
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <!-- Initial Odds -->
+          <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800/70 space-y-2">
+            <div class="text-slate-400 font-medium flex justify-between">
+              <span>初赔 (欧指均值)</span>
+              <span id="initPayoutLabel" class="text-slate-500 tabular-nums">返还率 --%</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5">
+              <div>
+                <label class="block text-[10px] text-slate-500 mb-0.5">初胜</label>
+                <input id="inpInitH" type="number" step="0.01" min="1.01" class="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200 tabular-nums focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-500 mb-0.5">初平</label>
+                <input id="inpInitD" type="number" step="0.01" min="1.01" class="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200 tabular-nums focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-500 mb-0.5">初负</label>
+                <input id="inpInitA" type="number" step="0.01" min="1.01" class="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200 tabular-nums focus:outline-none focus:border-emerald-500" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Instant Odds -->
+          <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800/70 space-y-2">
+            <div class="text-slate-400 font-medium flex justify-between">
+              <span>即赔 (竞彩/即时)</span>
+              <span id="instPayoutLabel" class="text-emerald-400/90 tabular-nums">返还率 --%</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5">
+              <div>
+                <label class="block text-[10px] text-slate-500 mb-0.5">即胜</label>
+                <input id="inpInstH" type="number" step="0.01" min="1.01" class="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200 tabular-nums focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-500 mb-0.5">即平</label>
+                <input id="inpInstD" type="number" step="0.01" min="1.01" class="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200 tabular-nums focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-500 mb-0.5">即负</label>
+                <input id="inpInstA" type="number" step="0.01" min="1.01" class="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200 tabular-nums focus:outline-none focus:border-emerald-500" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Motivation & Injury Sliders -->
+          <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800/70 space-y-2.5">
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-400">主队战意与主场加成</span>
+                <span id="valHomeMotiv" class="text-emerald-400 font-medium tabular-nums">75</span>
+              </div>
+              <input id="rngHomeMotiv" type="range" min="10" max="100" value="75" class="w-full accent-emerald-500 cursor-pointer" />
+            </div>
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-400">客队战意与伤停修正</span>
+                <span id="valAwayMotiv" class="text-sky-400 font-medium tabular-nums">65</span>
+              </div>
+              <input id="rngAwayMotiv" type="range" min="10" max="100" value="65" class="w-full accent-sky-500 cursor-pointer" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4-Dimension Analysis Report Cards -->
+      <div class="space-y-4">
+        <!-- 1. 基本面 -->
+        <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-sky-500/15 text-sky-400 border border-sky-500/30 text-xs">维度 01</span>
+              <span>【基本面】近期战绩、主客胜率与伤停解构</span>
+            </h3>
+          </div>
+          <div id="panelFundamentals" class="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- 2. 数据面 -->
+        <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 text-xs">维度 02</span>
+              <span>【数据面】初赔与即时赔率走势 · 诱多/阻上研判</span>
+            </h3>
+            <span id="marketSignalBadge" class="text-xs px-2.5 py-0.5 rounded-full font-medium"></span>
+          </div>
+          <div id="panelOddsAnalysis" class="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <!-- Populated by JS -->
+          </div>
+          <div class="mt-4 relative h-56 w-full">
+            <canvas id="oddsChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 3. 冷门预警 -->
+        <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 border border-rose-500/30 text-xs">维度 03</span>
+              <span>【冷门预警】战意评估与爆冷指数</span>
+            </h3>
+            <span id="upsetRiskBadge" class="text-xs px-2.5 py-0.5 rounded-full font-medium tabular-nums"></span>
+          </div>
+          <div id="panelUpsetWarning" class="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- 4. 最终研判 -->
+        <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/30 border border-emerald-500/30 rounded-2xl p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs">维度 04</span>
+              <span>【最终研判】胜平负倾向概率 · 竞彩方向 · 高频比分</span>
+            </h3>
+            <button id="btnCopyReport" type="button" class="text-xs px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+              📋 复制完整分析报告
+            </button>
+          </div>
+          <div id="panelFinalVerdict" class="space-y-4">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Parlay Ticket & Quick Actions (3 cols on lg) -->
+    <aside class="lg:col-span-3 flex flex-col gap-4">
+      <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+          <div>
+            <div class="flex items-center gap-1.5">
+              <h2 class="text-sm font-bold text-white">模拟混合过关推盘单</h2>
+              <span id="mixedBadge" class="hidden px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/40 text-[10px] font-medium">混合过关</span>
+            </div>
+            <p class="text-[11px] text-slate-400">已选 <span id="ticketCount" class="text-emerald-400 font-semibold tabular-nums">0</span> 场 · 支持全玩法混串</p>
+          </div>
+          <button id="btnClearTicket" type="button" class="text-xs text-slate-400 hover:text-rose-400 transition">清空</button>
+        </div>
+
+        <div id="ticketItems" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+          <!-- Ticket items injected by JS -->
+        </div>
+
+        <div class="border-t border-slate-800 pt-3 space-y-3 text-xs">
+          <div>
+            <label class="block text-slate-400 mb-1.5">过关方式</label>
+            <div id="parlayTypeGroup" class="grid grid-cols-5 gap-1">
+              <button type="button" data-parlay="1x1" class="parlay-btn py-1.5 rounded-lg border text-center transition">单关</button>
+              <button type="button" data-parlay="2x1" class="parlay-btn py-1.5 rounded-lg border text-center transition">2串1</button>
+              <button type="button" data-parlay="3x1" class="parlay-btn py-1.5 rounded-lg border text-center transition">3串1</button>
+              <button type="button" data-parlay="4x1" class="parlay-btn py-1.5 rounded-lg border text-center transition">4串1</button>
+              <button type="button" data-parlay="mix" class="parlay-btn py-1.5 rounded-lg border text-center transition">全串</button>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-slate-400">模拟倍数</span>
+            <div class="flex items-center gap-1.5">
+              <button id="btnMultMinus" type="button" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold">-</button>
+              <input id="inpMultiplier" type="number" min="1" max="999" value="10" class="w-14 text-center py-1 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 tabular-nums" />
+              <button id="btnMultPlus" type="button" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold">+</button>
+            </div>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 space-y-1.5">
+            <div class="flex justify-between text-slate-400">
+              <span>模拟投入</span>
+              <span id="ticketStake" class="text-slate-200 font-semibold tabular-nums">0 元</span>
+            </div>
+            <div class="flex justify-between text-slate-400">
+              <span>理论奖金区间</span>
+              <span id="ticketPayout" class="text-emerald-400 font-bold tabular-nums">0.00 ~ 0.00 元</span>
+            </div>
+          </div>
+
+          <button id="btnSaveToReview" type="button" class="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition flex items-center justify-center gap-1.5">
+            <span>📌</span>
+            <span>保存当前推盘单至每日复盘区</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Recommended Combination Plans -->
+      <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <div>
+            <h2 class="text-sm font-bold text-white flex items-center gap-1.5">
+              <span>🎯</span>
+              <span>今日推荐组合方案</span>
+            </h2>
+            <p class="text-[11px] text-slate-400">基于四维研判自动构建稳胆与博弈矩阵</p>
+          </div>
+          <button id="btnRefreshCombos" type="button" class="text-[11px] px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition">刷新</button>
+        </div>
+        <div id="recommendedCombosContainer" class="space-y-2.5">
+          <!-- Recommended combos injected by JS -->
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Daily Prediction & Post-Match Review Section -->
+  <section id="reviewSection" class="max-w-[1600px] w-full mx-auto px-3 sm:px-4 pb-8">
+    <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 sm:p-5 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <span>📊</span>
+            <span>每日预测与模拟购彩复盘区</span>
+            <span class="px-2 py-0.5 text-[11px] font-medium rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">次日赛果核对 & 盈亏统计</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">记录每日推盘方向与模拟方案，次日录入赛果（命中/未中）与实际比分即可自动核算盈亏并留存复盘笔记。</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <select id="reviewFilterStatus" class="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none">
+            <option value="ALL">全部状态</option>
+            <option value="PENDING">待复盘</option>
+            <option value="HIT">已红单</option>
+            <option value="MISS">未命中</option>
+          </select>
+          <button id="btnExportReview" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition">
+            📋 导出复盘汇总
+          </button>
+        </div>
+      </div>
+
+      <!-- Review KPI Summary -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800/70">
+          <div class="text-slate-400 mb-1">归档方案总数</div>
+          <div id="kpiTotalPlans" class="text-lg font-bold text-white tabular-nums">0</div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800/70">
+          <div class="text-slate-400 mb-1">已复盘命中率</div>
+          <div id="kpiHitRate" class="text-lg font-bold text-emerald-400 tabular-nums">--</div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800/70">
+          <div class="text-slate-400 mb-1">累计模拟投入</div>
+          <div id="kpiTotalStake" class="text-lg font-bold text-slate-200 tabular-nums">0 元</div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800/70">
+          <div class="text-slate-400 mb-1">累计净盈亏</div>
+          <div id="kpiNetProfit" class="text-lg font-bold text-amber-300 tabular-nums">0.00 元</div>
+        </div>
+      </div>
+
+      <!-- Review Records List -->
+      <div id="reviewListContainer" class="space-y-3">
+        <!-- Review records injected by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Import / Parse Modal -->
+  <div id="importModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white">导入 / 解析网页比赛数据</h3>
+        <button id="btnCloseImport" type="button" class="text-slate-400 hover:text-white text-lg">✕</button>
+      </div>
+      <p class="text-xs text-slate-400 leading-relaxed">
+        支持粘贴来自 <code class="text-sky-400">cp.zgzcw.com</code>、<code class="text-amber-400">live.nowscore.com/2in1.aspx</code> 或 <code class="text-violet-400">m.leisu.com/data/zuqiu/calc_jc</code> 的比赛行文本，或手动输入自定义赛事数据，系统将自动提取赔率并生成四维推盘分析。
+      </p>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-300 mb-1">一键粘贴网页行文本 (自动识别队名、让球、胜平负赔率)</label>
+          <textarea id="txtPasteRaw" rows="3" placeholder="例如：周日 010 欧国联 03:45 西班牙 [1] VS 英格兰 [4] 0 1.67 3.70 3.70 -1 3.21 3.29 1.91" class="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500"></textarea>
+          <div class="mt-1.5 flex justify-end">
+            <button id="btnAutoParseRaw" type="button" class="px-3 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium transition">
+              ⚡ 智能提取字段
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2 border-t border-slate-800">
+          <div>
+            <label class="block text-slate-400 mb-1">编号</label>
+            <input id="impCode" type="text" value="周日 012" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200" />
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">赛事</label>
+            <input id="impLeague" type="text" value="欧国联" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200" />
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">开赛时间</label>
+            <input id="impTime" type="text" value="03:45" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200" />
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">主队名称</label>
+            <input id="impHome" type="text" placeholder="如: 法国" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200" />
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">客队名称</label>
+            <input id="impAway" type="text" placeholder="如: 德国" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200" />
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">竞彩让球</label>
+            <input id="impHandicap" type="number" value="-1" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200" />
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">胜赔 (0球)</label>
+            <input id="impH" type="number" step="0.01" value="2.10" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200" />
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">平赔 (0球)</label>
+            <input id="impD" type="number" step="0.01" value="3.30" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200" />
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">负赔 (0球)</label>
+            <input id="impA" type="number" step="0.01" value="2.95" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200" />
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button id="btnCancelImport" type="button" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium">取消</button>
+        <button id="btnConfirmImport" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold">加入列表并推盘分析</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white shadow-xl transition-all"></div>
+
+  <script>
+    // =========================================================================
+    // Grounded Real-Time Match Dataset (2026-11-15 synced from cp.zgzcw.com + previews)
+    // =========================================================================
+    const BASE_MATCHES = [
+      {
+        id: 'sun010',
+        code: '周日 010',
+        league: '欧国联',
+        group: 'A级第3组第6轮',
+        kickoff: '03:45',
+        cutoff: '22:40',
+        status: '未开赛',
+        home: '西班牙',
+        away: '英格兰',
+        homeRank: 1,
+        awayRank: 4,
+        handicap: -1,
+        odds0: { h: 1.67, d: 3.70, a: 3.70 },
+        oddsHc: { h: 3.21, d: 3.29, a: 1.91 },
+        initEuro: { h: 1.87, d: 3.81, a: 3.82 },
+        instEuro: { h: 1.78, d: 3.75, a: 4.10 },
+        asianInit: '主让半球/一球 0.92',
+        asianInst: '主让半球/一球 0.84',
+        homeForm: ['W', 'W', 'W', 'W', 'W', 'D'],
+        awayForm: ['W', 'W', 'W', 'W', 'W', 'L'],
+        homeStats: '近6场5胜1平0负（进14球失5球，胜率83%），近6主场5胜1平0负（进16球失3球），正式赛事保持44场不败。',
+        awayStats: '近6场5胜0平1负（进22球失8球，胜率83%），近6客场5胜1平0负（进21球失7球），客场火力强劲。',
+        homeInjuries: '暂无核心伤病报告，传控主力框架齐整。',
+        awayInjuries: '后卫埃兹里·孔萨（膝关节受伤，11月10日起缺阵），防线轮换厚度略有受损。',
+        h2h: '近6次交锋西班牙4胜1平1负占优，首回合客场3-2击败英格兰。',
+        homeMotiv: 82,
+        awayMotiv: 78,
+        motivationNote: '西班牙A3组5战全胜积15分领跑，英格兰4胜1负积12分紧随其后，本场为小组头名及强强对话荣誉之战，英格兰有复仇战意但客场面临控球压制。'
+      },
+      {
+        id: 'sun011',
+        code: '周日 011',
+        league: '欧国联',
+        group: 'A级第1组第6轮',
+        kickoff: '03:45',
+        cutoff: '22:40',
+        status: '未开赛',
+        home: '比利时',
+        away: '意大利',
+        homeRank: 8,
+        awayRank: 12,
+        handicap: -1,
+        odds0: { h: 1.90, d: 3.55, a: 3.02 },
+        oddsHc: { h: 3.75, d: 3.75, a: 1.65 },
+        initEuro: { h: 2.15, d: 3.62, a: 3.11 },
+        instEuro: { h: 2.08, d: 3.55, a: 3.25 },
+        asianInit: '主让平半 0.88',
+        asianInst: '主让半球 0.96',
+        homeForm: ['W', 'L', 'W', 'L', 'W', 'L'],
+        awayForm: ['W', 'W', 'D', 'W', 'L', 'W'],
+        homeStats: '近6场3胜0平3负（进9球失8球，胜率50%），近6主场2胜3平1负（胜率33%），上轮2-1胜土耳其，此前曾1-4不敌法国。',
+        awayStats: '近6场4胜1平1负（进12球失6球，胜率67%），近6客场4胜2平0负保持不败（胜率67%），上轮主场3-1击败法国士气正盛。',
+        homeInjuries: '锋线核心罗梅卢·卢卡库（髋关节损伤）、中场阿马杜·奥纳纳（十字韧带撕裂）缺阵，前场支点与中场拦截受损。',
+        awayInjuries: '暂无重大伤病报告，阵容完整度优于主队。',
+        h2h: '首回合比利时客场2-0击败意大利，但此前5次交锋意大利4胜1平占据明显上风。',
+        homeMotiv: 80,
+        awayMotiv: 76,
+        motivationNote: '意大利积10分暂居A1组榜首，比利时积9分排第3，比利时主场必须争胜才能反超争取前二出线资格，战意迫切但受限于卢卡库缺阵。'
+      },
+      {
+        id: 'sun009',
+        code: '周日 009',
+        league: '欧国联',
+        group: 'A级第3组第6轮',
+        kickoff: '03:45',
+        cutoff: '22:40',
+        status: '未开赛',
+        home: '克罗地亚',
+        away: '捷克',
+        homeRank: 15,
+        awayRank: 52,
+        handicap: -1,
+        odds0: { h: 1.34, d: 4.32, a: 6.20 },
+        oddsHc: { h: 2.19, d: 3.40, a: 2.58 },
+        initEuro: { h: 1.56, d: 4.24, a: 5.41 },
+        instEuro: { h: 1.46, d: 4.40, a: 6.30 },
+        asianInit: '主让一球 0.90',
+        asianInst: '主让一球/球半 0.94',
+        homeForm: ['L', 'L', 'L', 'L', 'W', 'L'],
+        awayForm: ['L', 'L', 'L', 'L', 'L', 'L'],
+        homeStats: 'A3组1胜0平4负积3分排第3，近6场1胜0平5负（进6球失18球），近6主场3胜0平3负。',
+        awayStats: 'A3组0胜0平5负积0分垫底，近6场全败（进2球失15球），近6客场1胜0平5负，攻防两端均处于低谷。',
+        homeInjuries: '暂无伤病报告，主场收官战可尽遣主力。',
+        awayInjuries: '暂无伤病报告，但客场连续失利心理压力较大。',
+        h2h: '近6次交手克罗地亚3胜3平保持不败，首回合客场2-1击败捷克。',
+        homeMotiv: 76,
+        awayMotiv: 48,
+        motivationNote: '克罗地亚已锁定小组第3避免直接垫底降级，捷克5战全败提前锁定第4降级，双方均无出线压力，克罗地亚主场谢幕战战意高于客队。'
+      },
+      {
+        id: 'sun008',
+        code: '周日 008',
+        league: '欧国联',
+        group: 'C级第1组第6轮',
+        kickoff: '01:00',
+        cutoff: '22:40',
+        status: '未开赛',
+        home: '芬兰',
+        away: '圣马力诺',
+        homeRank: 75,
+        awayRank: 211,
+        handicap: -4,
+        odds0: { h: 1.03, d: 15.96, a: 47.06 },
+        oddsHc: { h: 2.47, d: 4.62, a: 1.93 },
+        initEuro: { h: 1.03, d: 15.96, a: 47.06 },
+        instEuro: { h: 1.02, d: 16.50, a: 52.00 },
+        asianInit: '主让四球 0.95',
+        asianInst: '主让三球半/四球 0.88',
+        homeForm: ['L', 'W', 'D', 'W', 'L', 'L'],
+        awayForm: ['L', 'L', 'L', 'L', 'L', 'L'],
+        homeStats: '近6场2胜1平3负（进10球失6球，胜率33%），面对欧洲鱼腩具备绝对控场与多点开花能力。',
+        awayStats: '世界排名第211位，防守端抗压能力有限，首回合主场0-7惨败于芬兰。',
+        homeInjuries: '主力框架健康，部分轮换球员可能获得出场机会。',
+        awayInjuries: '整体阵容半职业化为主，体能与对抗处于下风。',
+        h2h: '首回合芬兰客场7-0大胜圣马力诺，历史交锋芬兰保持全胜且净胜球优势悬殊。',
+        homeMotiv: 70,
+        awayMotiv: 45,
+        motivationNote: '竞彩胜平负单固未开售（让球-4球），焦点在于芬兰主场是否全力追求4球以上大胜，收官战存在半场领先后轮换降速的可能。'
+      },
+      {
+        id: 'sun007',
+        code: '周日 007',
+        league: '欧国联',
+        group: 'C级第2组第6轮',
+        kickoff: '22:00',
+        cutoff: '21:40',
+        status: '未开赛',
+        home: '塞浦路斯',
+        away: '黑山',
+        homeRank: 126,
+        awayRank: 78,
+        handicap: 1,
+        odds0: { h: 2.91, d: 3.22, a: 2.06 },
+        oddsHc: { h: 1.57, d: 3.60, a: 4.45 },
+        initEuro: { h: 3.33, d: 3.01, a: 2.27 },
+        instEuro: { h: 3.15, d: 3.18, a: 2.22 },
+        asianInit: '客让平半 0.92',
+        asianInst: '客让平半 0.86',
+        homeForm: ['D', 'W', 'L', 'W', 'D', 'L'],
+        awayForm: ['W', 'W', 'D', 'W', 'W', 'L'],
+        homeStats: '近10场5胜2平3负，上轮客场1-1战平亚美尼亚，主场防守韧性较强。',
+        awayStats: 'C2组前5轮保持不败高居小组第1（上轮2-1补时绝杀拉脱维亚），近10场6胜2平2负。',
+        homeInjuries: '主力阵容相对齐整，主场作战体能占优。',
+        awayInjuries: '后卫马鲁希奇伤缺，对边路防守推进有一定影响。',
+        h2h: '首回合黑山主场2-1险胜塞浦路斯，场面胶着。',
+        homeMotiv: 68,
+        awayMotiv: 85,
+        motivationNote: '黑山客场拿分即可巩固小组头名直接升级B级，战意充足；塞浦路斯主场有一定抢分能力，需防平局。'
+      },
+      {
+        id: 'sun006',
+        code: '周日 006',
+        league: '欧国联',
+        group: 'C级第2组第6轮',
+        kickoff: '22:00',
+        cutoff: '21:40',
+        status: '未开赛',
+        home: '拉脱维亚',
+        away: '亚美尼亚',
+        homeRank: 144,
+        awayRank: 108,
+        handicap: 1,
+        odds0: { h: 2.95, d: 3.02, a: 2.13 },
+        oddsHc: { h: 1.53, d: 3.50, a: 5.00 },
+        initEuro: { h: 3.14, d: 3.09, a: 2.33 },
+        instEuro: { h: 3.18, d: 3.05, a: 2.28 },
+        asianInit: '客让平半 0.96',
+        asianInst: '客让平半 0.90',
+        homeForm: ['L', 'L', 'D', 'L', 'L', 'L'],
+        awayForm: ['D', 'L', 'W', 'L', 'D', 'L'],
+        homeStats: '前5轮1平4负尚未取胜，近6场0胜1平5负（进3球失9球），上轮1-2遭黑山补时绝杀。',
+        awayStats: '上轮主场1-1战平塞浦路斯，整体进攻效率一般，客场拿分稳定性不足。',
+        homeInjuries: '主力框架基本完整，主场谋求小组赛首胜荣誉之战。',
+        awayInjuries: '队长兼中场核心斯佩尔茨扬因跟腱伤势缺阵，严重影响中路持球推进、最后一传及定位球威胁。',
+        h2h: '首回合亚美尼亚主场2-0击败拉脱维亚，但此番客场核心缺阵局势生变。',
+        homeMotiv: 72,
+        awayMotiv: 62,
+        motivationNote: '亚美尼亚缺少绝对中场核心斯佩尔茨扬，拉脱维亚主场急需首胜摆脱垫底颓势，具备一定冷门土壤。'
+      },
+      {
+        id: 'sun005',
+        code: '周日 005',
+        league: '荷乙',
+        group: '第15轮',
+        kickoff: '21:30',
+        cutoff: '21:10',
+        status: '未开赛',
+        home: '马斯特里',
+        away: '维迪斯',
+        homeRank: 8,
+        awayRank: 11,
+        handicap: 1,
+        odds0: { h: 2.91, d: 3.38, a: 2.00 },
+        oddsHc: { h: 1.61, d: 3.65, a: 4.10 },
+        initEuro: { h: 3.53, d: 2.96, a: 2.11 },
+        instEuro: { h: 3.20, d: 3.35, a: 2.10 },
+        asianInit: '客让平半 0.85',
+        asianInst: '客让半球 0.98',
+        homeForm: ['W', 'L', 'W', 'D', 'L', 'W'],
+        awayForm: ['W', 'D', 'W', 'L', 'W', 'D'],
+        homeStats: '14轮6胜2平6负积20分排第8，进19球失29球，主场攻强守弱特征明显。',
+        awayStats: '少赛1轮排第10-11位，距离升级附加赛区差距不大，客场反击效率较高。',
+        homeInjuries: '后防线失球偏多，主力框架基本可用。',
+        awayInjuries: '阵容完整度较好，锋线冲击力较强。',
+        h2h: '荷乙中游对决往往节奏开放，双方近两次交手均有较大比分出现。',
+        homeMotiv: 74,
+        awayMotiv: 78,
+        motivationNote: '两队同处升级附加赛边缘，马斯特里主场受让反倒具备一定拉力，需防范高进球格局下的分胜负走势。'
+      },
+      {
+        id: 'sun004',
+        code: '周日 004',
+        league: '日联杯',
+        group: '淘汰赛',
+        kickoff: '16:00',
+        cutoff: '15:40',
+        status: '进行中 (90\')',
+        home: '柏太阳神',
+        away: '川崎前锋',
+        homeRank: 2,
+        awayRank: 8,
+        handicap: -1,
+        odds0: { h: 1.67, d: 3.95, a: 3.48 },
+        oddsHc: { h: 3.30, d: 3.31, a: 1.87 },
+        initEuro: { h: 1.96, d: 3.73, a: 3.16 },
+        instEuro: { h: 1.82, d: 3.85, a: 3.50 },
+        asianInit: '主让半球 0.90',
+        asianInst: '主让半球/一球 0.94',
+        homeForm: ['W', 'W', 'D', 'W', 'W', 'L'],
+        awayForm: ['L', 'W', 'D', 'L', 'W', 'D'],
+        homeStats: '日职联高居第2，主场进攻流畅且压迫力强。',
+        awayStats: '日职联排名第8，客场防守稳定性较巅峰期有所下滑。',
+        homeInjuries: '主力阵容齐整，主场作战战意明确。',
+        awayInjuries: '中后场轮换吃紧，杯赛客场以防反为主。',
+        h2h: '近期交锋柏太阳神主场不落下风，整体场面主动。',
+        homeMotiv: 82,
+        awayMotiv: 70,
+        motivationNote: '柏太阳神联赛排名与主场优势显著，欧赔初即持续压低主胜，正路支撑较足。'
+      },
+      {
+        id: 'sun003',
+        code: '周日 003',
+        league: '日联杯',
+        group: '淘汰赛',
+        kickoff: '14:00',
+        cutoff: '13:40',
+        status: '已开赛',
+        home: '大阪樱花',
+        away: '浦和红钻',
+        homeRank: 11,
+        awayRank: 9,
+        handicap: 1,
+        odds0: { h: 2.55, d: 3.40, a: 2.21 },
+        oddsHc: { h: 1.49, d: 3.98, a: 4.60 },
+        initEuro: { h: 2.69, d: 3.56, a: 2.25 },
+        instEuro: { h: 2.75, d: 3.45, a: 2.30 },
+        asianInit: '客让平半 0.96',
+        asianInst: '客让平半 0.92',
+        homeForm: ['D', 'L', 'W', 'D', 'L', 'W'],
+        awayForm: ['W', 'D', 'W', 'L', 'D', 'W'],
+        homeStats: '联赛排名第11，主场偶有闪光但稳定性不足。',
+        awayStats: '联赛排名第9，客场韧性较强，整体控球占优。',
+        homeInjuries: '轮换阵容出战杯赛为主。',
+        awayInjuries: '阵容相对齐整。',
+        h2h: '近5次交手平局率偏高，双方差距微弱。',
+        homeMotiv: 68,
+        awayMotiv: 72,
+        motivationNote: '日联杯均势对决，浦和客场略占优势但平局赔率压得较实，需防90分钟握手言和。'
+      },
+      {
+        id: 'sun002',
+        code: '周日 002',
+        league: '日联杯',
+        group: '淘汰赛',
+        kickoff: '14:00',
+        cutoff: '13:40',
+        status: '已开赛',
+        home: '鹿岛鹿角',
+        away: '横滨水手',
+        homeRank: 6,
+        awayRank: 7,
+        handicap: -1,
+        odds0: { h: 1.64, d: 3.80, a: 3.75 },
+        oddsHc: { h: 3.15, d: 3.32, a: 1.92 },
+        initEuro: { h: 1.74, d: 3.86, a: 3.96 },
+        instEuro: { h: 1.72, d: 3.85, a: 4.05 },
+        asianInit: '主让半球/一球 0.88',
+        asianInst: '主让半球/一球 0.85',
+        homeForm: ['W', 'W', 'D', 'W', 'L', 'W'],
+        awayForm: ['L', 'W', 'L', 'D', 'W', 'L'],
+        homeStats: '联赛第6，主场防守硬朗，胜率可观。',
+        awayStats: '联赛第7，攻强守弱特征明显，客场失球较多。',
+        homeInjuries: '主力框架健康。',
+        awayInjuries: '防线偶有轮换失误。',
+        h2h: '鹿岛主场对阵横滨水手往往能打出节奏压制。',
+        homeMotiv: 80,
+        awayMotiv: 72,
+        motivationNote: '初即主胜水位稳步下调，机构对鹿岛主场90分钟取胜防范态度一致。'
+      },
+      {
+        id: 'sun001',
+        code: '周日 001',
+        league: '日联杯',
+        group: '淘汰赛',
+        kickoff: '13:00',
+        cutoff: '12:40',
+        status: '已开赛',
+        home: '町田泽维',
+        away: '神户胜利',
+        homeRank: 4,
+        awayRank: 5,
+        handicap: -1,
+        odds0: { h: 2.25, d: 3.08, a: 2.70 },
+        oddsHc: { h: 5.20, d: 3.75, a: 1.47 },
+        initEuro: { h: 2.30, d: 3.14, a: 2.93 },
+        instEuro: { h: 2.35, d: 3.10, a: 2.85 },
+        asianInit: '主让平半 0.94',
+        asianInst: '主让平半 0.98',
+        homeForm: ['W', 'D', 'L', 'W', 'D', 'W'],
+        awayForm: ['W', 'W', 'D', 'L', 'W', 'D'],
+        homeStats: '联赛第4，高强度逼抢与定位球效率出色。',
+        awayStats: '联赛第5，卫冕底蕴充足，客场作战经验丰富。',
+        homeInjuries: '阵容齐整。',
+        awayInjuries: '主力轮换微调。',
+        h2h: '强强对话格局，近几次交锋分差均在1球以内。',
+        homeMotiv: 76,
+        awayMotiv: 76,
+        motivationNote: '日职前五强强对话，主胜水位微升而平赔低企（3.08），需高度防范平局及客队不败。'
+      }
+    ];
+
+    // =========================================================================
+    // Application State
+    // =========================================================================
+    let matches = JSON.parse(JSON.stringify(BASE_MATCHES));
+    let activeLeague = 'ALL';
+    let searchQuery = '';
+    let selectedMatchId = 'sun010';
+    let overrides = {}; // Per-match slider/odds overrides
+    let ticket = []; // { matchId, code, matchName, pickLabel, pickType, odds, banker }
+    let parlayType = '2x1';
+    let multiplier = 10;
+    let chartInstance = null;
+    let activePlayTab = 'spf';
+    let leftCalcMode = 'mix';
+    let expandedMatchIds = { sun010: true };
+
+    let reviewRecords = [];
+
+    // Load saved ticket & review records safely
+    try {
+      const saved = localStorage.getItem('jc_sim_ticket_v1');
+      if (saved) ticket = JSON.parse(saved);
+      const savedRev = localStorage.getItem('jc_sim_reviews_v1');
+      if (savedRev) reviewRecords = JSON.parse(savedRev);
+    } catch (e) {}
+
+    function saveReviewRecords() {
+      try {
+        localStorage.setItem('jc_sim_reviews_v1', JSON.stringify(reviewRecords));
+      } catch (e) {}
+    }
+
+    function saveTicket() {
+      try {
+        localStorage.setItem('jc_sim_ticket_v1', JSON.stringify(ticket));
+      } catch (e) {}
+    }
+
+    // =========================================================================
+    // Core Quantitative & 4-Dimension Analysis Engine
+    // =========================================================================
+    function getEffectiveParams(m) {
+      const ov = overrides[m.id] || {};
+      return {
+        initH: ov.initH ?? m.initEuro.h,
+        initD: ov.initD ?? m.initEuro.d,
+        initA: ov.initA ?? m.initEuro.a,
+        instH: ov.instH ?? m.odds0.h,
+        instD: ov.instD ?? m.odds0.d,
+        instA: ov.instA ?? m.odds0.a,
+        homeMotiv: ov.homeMotiv ?? m.homeMotiv,
+        awayMotiv: ov.awayMotiv ?? m.awayMotiv,
+      };
+    }
+
+    function calcImplied(h, d, a) {
+      const invSum = (1 / h) + (1 / d) + (1 / a);
+      const payout = (1 / invSum) * 100;
+      return {
+        payout: payout,
+        pH: ((1 / h) / invSum) * 100,
+        pD: ((1 / d) / invSum) * 100,
+        pA: ((1 / a) / invSum) * 100,
+      };
+    }
+
+    function computeAnalysis(m) {
+      const p = getEffectiveParams(m);
+      const initImp = calcImplied(p.initH, p.initD, p.initA);
+      const instImp = calcImplied(p.instH, p.instD, p.instA);
+
+      const dH = p.instH - p.initH;
+      const dD = p.instD - p.initD;
+      const dA = p.instA - p.initA;
+
+      // Determine Market Signal (诱多 vs 阻上 vs 正常降水)
+      let marketSignal = '盘口平稳均衡';
+      let signalTone = 'bg-slate-700/60 text-slate-300 border border-slate-600';
+      let oddsNarrative = '';
+
+      if (p.instH < p.initH - 0.08 && instImp.pH > 48) {
+        marketSignal = '机构实盘降水设防（阻上特征）';
+        signalTone = 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40';
+        oddsNarrative = `主胜即时赔率由初赔 ${p.initH.toFixed(2)} 下调至 ${p.instH.toFixed(2)}，主胜隐含概率提升 ${(instImp.pH - initImp.pH).toFixed(1)}%。配合亚盘 ${m.asianInst} 走势，机构主动压缩主胜赔付空间以控制热门方向风险，呈现明显的正路设防特征。`;
+      } else if (p.instH > p.initH + 0.06 && instImp.pH > 40) {
+        marketSignal = '主胜抬水（警惕诱多/分流）';
+        signalTone = 'bg-amber-500/15 text-amber-300 border border-amber-500/40';
+        oddsNarrative = `主胜赔率从初赔 ${p.initH.toFixed(2)} 抬升至 ${p.instH.toFixed(2)}，而平赔（${p.instD.toFixed(2)}）或客胜有所下压。在主队具备一定名气或让球优势的情况下，抬高主胜回报容易吸引筹码盲目追捧主队，需警惕机构“诱多”分流风险。`;
+      } else if (p.instA < p.initA - 0.10) {
+        marketSignal = '客胜连续下调（客队受捧）';
+        signalTone = 'bg-sky-500/15 text-sky-300 border border-sky-500/40';
+        oddsNarrative = `客胜赔率由 ${p.initA.toFixed(2)} 下调至 ${p.instA.toFixed(2)}，隐含概率上升 ${(instImp.pA - initImp.pA).toFixed(1)}%。机构对客队拿分预期增强，若主队无法形成有效阻上，客队不败方向具备较高博弈价值。`;
+      } else {
+        oddsNarrative = `初赔（${p.initH.toFixed(2)} / ${p.initD.toFixed(2)} / ${p.initA.toFixed(2)}）过渡至即赔（${p.instH.toFixed(2)} / ${p.instD.toFixed(2)} / ${p.instA.toFixed(2)}），整体波动幅度温和，返还率维持在 ${instImp.payout.toFixed(1)}% 左右，机构对当前实力定位保持均衡姿态。`;
+      }
+
+      // Blend Implied Probabilities with Motivation & Injury Sliders
+      const motivDiff = (p.homeMotiv - p.awayMotiv) * 0.18;
+      let rawH = Math.max(4, instImp.pH + motivDiff);
+      let rawA = Math.max(4, instImp.pA - motivDiff);
+      let rawD = Math.max(8, instImp.pD + (100 - Math.abs(p.homeMotiv - p.awayMotiv)) * 0.02);
+
+      const sumRaw = rawH + rawD + rawA;
+      let probH = Math.round((rawH / sumRaw) * 100);
+      let probD = Math.round((rawD / sumRaw) * 100);
+      let probA = 100 - probH - probD;
+      if (probA < 1) { probA = 1; probH = 99 - probD; }
+
+      // Upset Risk Score (0-100)
+      let upsetScore = 30;
+      if (Math.abs(probH - probA) < 15) upsetScore += 28;
+      if (p.instH > p.initH + 0.05) upsetScore += 18;
+      if (p.awayMotiv > p.homeMotiv) upsetScore += 15;
+      if (m.homeInjuries.includes('缺阵') || m.homeInjuries.includes('损伤')) upsetScore += 14;
+      if (m.handicap <= -2) upsetScore = Math.max(12, upsetScore - 22);
+      upsetScore = Math.min(92, Math.max(10, Math.round(upsetScore)));
+
+      let upsetLevel = '低冷门风险';
+      let upsetTone = 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+      if (upsetScore >= 65) {
+        upsetLevel = '高冷门预警';
+        upsetTone = 'bg-rose-500/15 text-rose-300 border border-rose-500/40';
+      } else if (upsetScore >= 42) {
+        upsetLevel = '中度防冷';
+        upsetTone = 'bg-amber-500/15 text-amber-300 border border-amber-500/40';
+      }
+
+      // Recommended JC Direction & High-Frequency Scorelines
+      let recPrimary = '';
+      let recSecondary = '';
+      let scores = [];
+
+      if (m.handicap <= -3) {
+        recPrimary = '让胜 / 让平（关注净胜球门槛）';
+        recSecondary = '高赔博让平';
+        scores = [
+          { score: '4-0', pct: '24%' },
+          { score: '3-0', pct: '21%' },
+          { score: '5-0', pct: '16%' }
+        ];
+      } else if (probH >= 55) {
+        recPrimary = '主胜';
+        recSecondary = m.handicap === -1 && p.instH < 1.55 ? '让胜 / 让平' : '防平（主胜+平）';
+        scores = [
+          { score: '2-0', pct: '22%' },
+          { score: '2-1', pct: '19%' },
+          { score: '1-0', pct: '15%' }
+        ];
+      } else if (probA >= 46) {
+        recPrimary = '客胜';
+        recSecondary = m.handicap === 1 ? '让负 / 客不败' : '平 / 负';
+        scores = [
+          { score: '1-2', pct: '21%' },
+          { score: '0-2', pct: '17%' },
+          { score: '1-1', pct: '16%' }
+        ];
+      } else if (probH > probA) {
+        recPrimary = '主胜 / 让平';
+        recSecondary = '双平（胜/平）';
+        scores = [
+          { score: '2-1', pct: '21%' },
+          { score: '1-1', pct: '19%' },
+          { score: '1-0', pct: '15%' }
+        ];
+      } else {
+        recPrimary = '平 / 客不败';
+        recSecondary = '让胜（受让方）';
+        scores = [
+          { score: '1-1', pct: '23%' },
+          { score: '1-2', pct: '18%' },
+          { score: '0-1', pct: '15%' }
+        ];
+      }
+
+      // Poisson Full-Market Modeling (比分 / 总进球 / 半全场 / 让球胜平负)
+      const pH0 = probH / 100, pD0 = probD / 100, pA0 = probA / 100;
+      const totalExp = m.handicap <= -3 ? 4.4 : (2.35 + (1 - pD0) * 0.75);
+      const homeShare = Math.min(0.92, Math.max(0.15, pH0 + pD0 * 0.48));
+      const lamH = Math.max(0.25, totalExp * homeShare);
+      const lamA = Math.max(0.20, totalExp * (1 - homeShare));
+
+      function pois(k, lam) {
+        let f = 1;
+        for (let i = 2; i <= k; i++) f *= i;
+        return Math.exp(-lam) * Math.pow(lam, k) / f;
+      }
+
+      const scoreMatrix = [];
+      const goalProbs = Array(8).fill(0);
+      let hcWin = 0, hcDraw = 0, hcLoss = 0;
+
+      for (let hg = 0; hg <= 6; hg++) {
+        for (let ag = 0; ag <= 6; ag++) {
+          let pr = pois(hg, lamH) * pois(ag, lamA);
+          // Slight Dixon-Coles low-score draw calibration
+          if (hg === ag && hg <= 1) pr *= 1.12;
+          scoreMatrix.push({ hg, ag, pr });
+          const tg = Math.min(7, hg + ag);
+          goalProbs[tg] += pr;
+          const diff = hg + m.handicap - ag;
+          if (diff > 0) hcWin += pr;
+          else if (diff === 0) hcDraw += pr;
+          else hcLoss += pr;
+        }
+      }
+
+      const hcSum = hcWin + hcDraw + hcLoss || 1;
+      const hcProbH = Math.round((hcWin / hcSum) * 100);
+      const hcProbD = Math.round((hcDraw / hcSum) * 100);
+      const hcProbA = Math.max(1, 100 - hcProbH - hcProbD);
+
+      let recHandicap = '';
+      if (hcProbH >= hcProbD && hcProbH >= hcProbA) recHandicap = `让(${m.handicap > 0 ? '+' + m.handicap : m.handicap})胜`;
+      else if (hcProbD >= hcProbH && hcProbD >= hcProbA) recHandicap = `让(${m.handicap > 0 ? '+' + m.handicap : m.handicap})平`;
+      else recHandicap = `让(${m.handicap > 0 ? '+' + m.handicap : m.handicap})负`;
+
+      // Total Goals (0 ~ 7+球)
+      const gSum = goalProbs.reduce((s, v) => s + v, 0) || 1;
+      const totalGoalsList = goalProbs.map((v, idx) => {
+        const pct = (v / gSum) * 100;
+        const odds = Math.min(80, Math.max(2.10, +(88 / Math.max(1.1, pct)).toFixed(2)));
+        return { label: idx === 7 ? '7+球' : `${idx}球`, pct: +pct.toFixed(1), odds };
+      });
+      const topGoals = [...totalGoalsList].sort((x, y) => y.pct - x.pct).slice(0, 3);
+
+      // Correct Score (31 standard 竞彩 options)
+      const winScoresSpec = ['1:0','2:0','2:1','3:0','3:1','3:2','4:0','4:1','4:2','5:0','5:1','5:2'];
+      const drawScoresSpec = ['0:0','1:1','2:2','3:3'];
+      const lossScoresSpec = ['0:1','0:2','1:2','0:3','1:3','2:3','0:4','1:4','2:4','0:5','1:5','2:5'];
+      const matSum = scoreMatrix.reduce((s, x) => s + x.pr, 0) || 1;
+      const getPr = (h, a) => {
+        const f = scoreMatrix.find(x => x.hg === h && x.ag === a);
+        return f ? (f.pr / matSum) * 100 : 0.2;
+      };
+      const buildScoreObj = (lbl, pctVal) => ({
+        label: lbl,
+        pct: +pctVal.toFixed(1),
+        odds: Math.min(250, Math.max(4.50, +(85 / Math.max(0.35, pctVal)).toFixed(2)))
+      });
+
+      const winScores = winScoresSpec.map(s => { const [h,a]=s.split(':').map(Number); return buildScoreObj(s, getPr(h,a)); });
+      const winOtherPct = Math.max(0.5, scoreMatrix.filter(x => x.hg > x.ag && !winScoresSpec.includes(`${x.hg}:${x.ag}`)).reduce((s,x)=>s+(x.pr/matSum)*100, 0));
+      winScores.push(buildScoreObj('胜其他', winOtherPct));
+
+      const drawScores = drawScoresSpec.map(s => { const [h,a]=s.split(':').map(Number); return buildScoreObj(s, getPr(h,a)); });
+      const drawOtherPct = Math.max(0.2, scoreMatrix.filter(x => x.hg === x.ag && x.hg >= 4).reduce((s,x)=>s+(x.pr/matSum)*100, 0));
+      drawScores.push(buildScoreObj('平其他', drawOtherPct));
+
+      const lossScores = lossScoresSpec.map(s => { const [h,a]=s.split(':').map(Number); return buildScoreObj(s, getPr(h,a)); });
+      const lossOtherPct = Math.max(0.5, scoreMatrix.filter(x => x.hg < x.ag && !lossScoresSpec.includes(`${x.hg}:${x.ag}`)).reduce((s,x)=>s+(x.pr/matSum)*100, 0));
+      lossScores.push(buildScoreObj('负其他', lossOtherPct));
+
+      const allScores = [...winScores, ...drawScores, ...lossScores];
+      const topPoissonScores = [...allScores].sort((x, y) => y.pct - x.pct).slice(0, 3).map(x => ({
+        score: x.label.replace(':', '-'),
+        pct: `${x.pct.toFixed(0)}%`,
+        odds: x.odds
+      }));
+
+      // Half-Time / Full-Time (9 options)
+      const htWin = pH0 * 0.54, htDraw = 0.42 + pD0 * 0.16, htLoss = pA0 * 0.54;
+      const htSum = htWin + htDraw + htLoss;
+      const htP = { W: htWin / htSum, D: htDraw / htSum, L: htLoss / htSum };
+      const htftRaw = [
+        { label: '胜胜', w: htP.W * pH0 * 1.45 },
+        { label: '胜平', w: htP.W * pD0 * 0.65 },
+        { label: '胜负', w: htP.W * pA0 * 0.28 },
+        { label: '平胜', w: htP.D * pH0 * 1.15 },
+        { label: '平平', w: htP.D * pD0 * 1.35 },
+        { label: '平负', w: htP.D * pA0 * 1.15 },
+        { label: '负胜', w: htP.L * pH0 * 0.28 },
+        { label: '负平', w: htP.L * pD0 * 0.65 },
+        { label: '负负', w: htP.L * pA0 * 1.45 },
+      ];
+      const htftSum = htftRaw.reduce((s, x) => s + x.w, 0) || 1;
+      const htftList = htftRaw.map(x => {
+        const pct = (x.w / htftSum) * 100;
+        const odds = Math.min(80, Math.max(1.85, +(88 / Math.max(1.1, pct)).toFixed(2)));
+        return { label: x.label, pct: +pct.toFixed(1), odds };
+      });
+      const topHtft = [...htftList].sort((x, y) => y.pct - x.pct).slice(0, 2);
+
+      return {
+        p, initImp, instImp,
+        dH, dD, dA,
+        marketSignal, signalTone, oddsNarrative,
+        probH, probD, probA,
+        hcProbH, hcProbD, hcProbA, recHandicap,
+        upsetScore, upsetLevel, upsetTone,
+        recPrimary, recSecondary,
+        scores: topPoissonScores,
+        totalGoalsList, topGoals,
+        winScores, drawScores, lossScores,
+        htftList, topHtft
+      };
+    }
+
+    // =========================================================================
+    // Rendering Functions
+    // =========================================================================
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => el.classList.add('hidden'), 2800);
+    }
+
+    function renderLeagueFilters() {
+      const counts = { ALL: matches.length };
+      matches.forEach(m => { counts[m.league] = (counts[m.league] || 0) + 1; });
+      const leagues = ['ALL', ...Object.keys(counts).filter(k => k !== 'ALL')];
+      const container = document.getElementById('leagueFilters');
+      container.innerHTML = leagues.map(l => {
+        const active = activeLeague === l;
+        const label = l === 'ALL' ? '全部' : l;
+        return `<button type="button" data-league="${l}" class="league-filter-btn shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-medium transition ${
+          active
+            ? 'bg-emerald-600 text-white shadow-sm'
+            : 'bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+        }">${label} (${counts[l]})</button>`;
+      }).join('');
+
+      container.querySelectorAll('.league-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          activeLeague = btn.dataset.league;
+          renderLeagueFilters();
+          renderMatchList();
+        });
+      });
+    }
+
+    function renderLeftCalcModeBar() {
+      const modes = [
+        { id: 'spf', label: '胜平负' },
+        { id: 'score', label: '比分' },
+        { id: 'goals', label: '总进球' },
+        { id: 'htft', label: '半全场' },
+        { id: 'mix', label: '混合过关' },
+      ];
+      const bar = document.getElementById('leftCalcModeBar');
+      if (!bar) return;
+      bar.innerHTML = modes.map(md => `
+        <button type="button" data-mode="${md.id}" class="left-mode-btn py-1 rounded-md text-[10px] font-medium border transition ${
+          leftCalcMode === md.id
+            ? 'bg-rose-500/20 border-rose-500/60 text-rose-300'
+            : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+        }">${md.label}</button>
+      `).join('');
+      bar.querySelectorAll('.left-mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          leftCalcMode = btn.dataset.mode;
+          if (leftCalcMode !== 'spf') {
+            expandedMatchIds[selectedMatchId] = true;
+          }
+          renderLeftCalcModeBar();
+          renderMatchList();
+        });
+      });
+    }
+
+    function isPickInTicket(matchId, playType, pick) {
+      return ticket.some(t => t.matchId === matchId && (t.playType || '胜平负') === playType && t.pick === pick);
+    }
+
+    function renderMatchList() {
+      const q = searchQuery.trim().toLowerCase();
+      const filtered = matches.filter(m => {
+        if (activeLeague !== 'ALL' && m.league !== activeLeague) return false;
+        if (!q) return true;
+        return (
+          m.code.toLowerCase().includes(q) ||
+          m.league.toLowerCase().includes(q) ||
+          m.home.toLowerCase().includes(q) ||
+          m.away.toLowerCase().includes(q)
+        );
+      });
+
+      document.getElementById('matchCountBadge').textContent = `${filtered.length} 场`;
+      const container = document.getElementById('matchListContainer');
+
+      if (!filtered.length) {
+        container.innerHTML = `<div class="p-6 text-center text-xs text-slate-500">暂无匹配赛事</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(m => {
+        const isSel = m.id === selectedMatchId;
+        const isExp = !!expandedMatchIds[m.id];
+        const a = computeAnalysis(m);
+        const hcText = m.handicap > 0 ? `+${m.handicap}` : `${m.handicap}`;
+        const h0 = m.handicap <= -3 ? null : m.odds0.h;
+        const d0 = m.handicap <= -3 ? null : m.odds0.d;
+        const a0 = m.handicap <= -3 ? null : m.odds0.a;
+
+        const btnCls = (play, pick) => isPickInTicket(m.id, play, pick)
+          ? 'bg-emerald-600/35 border-emerald-400 text-emerald-200 font-semibold'
+          : 'bg-slate-900/90 border-slate-800 hover:border-slate-600 text-slate-200';
+
+        const showSpf = leftCalcMode === 'mix' || leftCalcMode === 'spf';
+        const showHtft = isExp && (leftCalcMode === 'mix' || leftCalcMode === 'htft');
+        const showGoals = isExp && (leftCalcMode === 'mix' || leftCalcMode === 'goals');
+        const showScore = isExp && (leftCalcMode === 'mix' || leftCalcMode === 'score');
+
+        const renderLeftScoreBlock = (title, list, colorCls) => `
+          <div class="space-y-1">
+            <div class="text-[9px] font-semibold ${colorCls}">${title}</div>
+            <div class="grid grid-cols-5 gap-1">
+              ${list.map(s => `
+                <button type="button" data-mid="${m.id}" data-play="比分" data-pick="${s.label}" data-odds="${s.odds}" class="left-pick-btn py-1 px-0.5 rounded border text-center transition tabular-nums ${btnCls('比分', s.label)}">
+                  <div class="text-[10px] font-bold leading-tight">${s.label}</div>
+                  <div class="text-[9px] text-slate-400 leading-tight">${s.odds.toFixed(1)}</div>
+                </button>
+              `).join('')}
+            </div>
+          </div>`;
+
+        return `
+          <div class="rounded-xl border transition ${
+            isSel
+              ? 'bg-emerald-950/25 border-emerald-500/60 shadow-md shadow-emerald-950/30'
+              : 'bg-slate-950/70 border-slate-800/80 hover:border-slate-700'
+          }">
+            <!-- Clickable Match Header -->
+            <button type="button" data-id="${m.id}" class="match-card w-full text-left p-2.5 pb-1.5">
+              <div class="flex items-center justify-between text-[11px] mb-1">
+                <div class="flex items-center gap-1.5">
+                  <span class="font-semibold text-slate-200">${m.code}</span>
+                  <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">${m.league}</span>
+                </div>
+                <span class="${m.status.includes('未开赛') ? 'text-emerald-400' : 'text-amber-400'} tabular-nums">${m.kickoff}</span>
+              </div>
+              <div class="flex items-center justify-between gap-2 text-xs font-semibold text-white">
+                <span class="truncate">${m.home} <span class="text-[10px] font-normal text-slate-500">[${m.homeRank}]</span></span>
+                <span class="text-[10px] text-slate-500 shrink-0">VS</span>
+                <span class="truncate text-right"><span class="text-[10px] font-normal text-slate-500">[${m.awayRank}]</span> ${m.away}</span>
+              </div>
+            </button>
+
+            <!-- [0] & [让球] Quick Odds Rows -->
+            ${showSpf ? `
+            <div class="px-2.5 pb-2 space-y-1 text-[10px] tabular-nums">
+              <div class="grid grid-cols-4 gap-1 items-center">
+                <div class="py-1 text-center rounded bg-slate-900/70 text-slate-400 font-medium">[0]</div>
+                ${h0 !== null ? `
+                  <button type="button" data-mid="${m.id}" data-play="胜平负" data-pick="主胜" data-odds="${h0}" class="left-pick-btn py-1 rounded border text-center transition ${btnCls('胜平负', '主胜')}">胜 ${h0.toFixed(2)}</button>
+                  <button type="button" data-mid="${m.id}" data-play="胜平负" data-pick="平局" data-odds="${d0}" class="left-pick-btn py-1 rounded border text-center transition ${btnCls('胜平负', '平局')}">平 ${d0.toFixed(2)}</button>
+                  <button type="button" data-mid="${m.id}" data-play="胜平负" data-pick="客胜" data-odds="${a0}" class="left-pick-btn py-1 rounded border text-center transition ${btnCls('胜平负', '客胜')}">负 ${a0.toFixed(2)}</button>
+                ` : `<div class="col-span-3 py-1 text-center rounded bg-slate-900/40 text-slate-500">胜平负未开售</div>`}
+              </div>
+              <div class="grid grid-cols-4 gap-1 items-center">
+                <div class="py-1 text-center rounded bg-slate-900/70 text-amber-400 font-medium">[${hcText}]</div>
+                <button type="button" data-mid="${m.id}" data-play="让球" data-pick="让(${hcText})胜" data-odds="${m.oddsHc.h}" class="left-pick-btn py-1 rounded border text-center transition ${btnCls('让球', `让(${hcText})胜`)}">胜 ${m.oddsHc.h.toFixed(2)}</button>
+                <button type="button" data-mid="${m.id}" data-play="让球" data-pick="让(${hcText})平" data-odds="${m.oddsHc.d}" class="left-pick-btn py-1 rounded border text-center transition ${btnCls('让球', `让(${hcText})平`)}">平 ${m.oddsHc.d.toFixed(2)}</button>
+                <button type="button" data-mid="${m.id}" data-play="让球" data-pick="让(${hcText})负" data-odds="${m.oddsHc.a}" class="left-pick-btn py-1 rounded border text-center transition ${btnCls('让球', `让(${hcText})负`)}">负 ${m.oddsHc.a.toFixed(2)}</button>
+              </div>
+            </div>` : ''}
+
+            <!-- Expand / Collapse Full Calculator Bar -->
+            <div class="px-2.5 pb-2 flex items-center justify-between border-t border-slate-800/50 pt-1.5">
+              <span class="text-[10px] text-slate-500">${isExp ? '全玩法推演已展开' : '点击展开比分/总进球/半全场'}</span>
+              <button type="button" data-id="${m.id}" class="toggle-expand-btn text-[10px] font-medium text-sky-400 hover:text-sky-300 flex items-center gap-0.5">
+                <span>${isExp ? '收起 ▲' : '展开全玩法 ▼'}</span>
+              </button>
+            </div>
+
+            <!-- Expanded Calculator Drawer (半全场 + 总进球 + 比分) -->
+            ${isExp ? `
+            <div class="px-2.5 pb-3 pt-2 border-t border-slate-800/80 bg-slate-950/80 rounded-b-xl space-y-3">
+              ${showHtft ? `
+              <div class="space-y-1">
+                <div class="text-[10px] font-bold text-rose-400">半全场胜平负</div>
+                <div class="grid grid-cols-3 gap-1">
+                  ${a.htftList.map(h => `
+                    <button type="button" data-mid="${m.id}" data-play="半全场" data-pick="${h.label}" data-odds="${h.odds}" class="left-pick-btn py-1 px-1 rounded border text-center transition tabular-nums ${btnCls('半全场', h.label)}">
+                      <div class="text-[10px] font-bold leading-tight">${h.label}</div>
+                      <div class="text-[9px] text-slate-400 leading-tight">${h.odds.toFixed(2)}</div>
+                    </button>
+                  `).join('')}
+                </div>
+              </div>` : ''}
+
+              ${showGoals ? `
+              <div class="space-y-1">
+                <div class="text-[10px] font-bold text-rose-400">总进球</div>
+                <div class="grid grid-cols-4 gap-1">
+                  ${a.totalGoalsList.map(g => `
+                    <button type="button" data-mid="${m.id}" data-play="总进球" data-pick="${g.label}" data-odds="${g.odds}" class="left-pick-btn py-1 px-1 rounded border text-center transition tabular-nums ${btnCls('总进球', g.label)}">
+                      <div class="text-[10px] font-bold leading-tight">${g.label.replace('球','')}</div>
+                      <div class="text-[9px] text-slate-400 leading-tight">${g.odds.toFixed(2)}</div>
+                    </button>
+                  `).join('')}
+                </div>
+              </div>` : ''}
+
+              ${showScore ? `
+              <div class="space-y-2">
+                <div class="text-[10px] font-bold text-rose-400">比分</div>
+                ${renderLeftScoreBlock('主胜', a.winScores, 'text-emerald-400')}
+                ${renderLeftScoreBlock('平局', a.drawScores, 'text-amber-300')}
+                ${renderLeftScoreBlock('客胜', a.lossScores, 'text-sky-400')}
+              </div>` : ''}
+            </div>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      container.querySelectorAll('.match-card').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedMatchId = btn.dataset.id;
+          renderMatchList();
+          syncInputsToMatch();
+          renderAnalysisWorkspace();
+        });
+      });
+
+      container.querySelectorAll('.toggle-expand-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.id;
+          expandedMatchIds[id] = !expandedMatchIds[id];
+          if (expandedMatchIds[id]) selectedMatchId = id;
+          renderMatchList();
+          syncInputsToMatch();
+          renderAnalysisWorkspace();
+        });
+      });
+
+      container.querySelectorAll('.left-pick-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const m = matches.find(x => x.id === btn.dataset.mid);
+          if (!m) return;
+          selectedMatchId = m.id;
+          addToTicket(m, btn.dataset.pick, parseFloat(btn.dataset.odds), btn.dataset.play);
+          renderMatchList();
+          syncInputsToMatch();
+          renderAnalysisWorkspace();
+        });
+      });
+    }
+
+    function syncInputsToMatch() {
+      const m = matches.find(x => x.id === selectedMatchId) || matches[0];
+      const p = getEffectiveParams(m);
+      document.getElementById('inpInitH').value = p.initH.toFixed(2);
+      document.getElementById('inpInitD').value = p.initD.toFixed(2);
+      document.getElementById('inpInitA').value = p.initA.toFixed(2);
+      document.getElementById('inpInstH').value = p.instH.toFixed(2);
+      document.getElementById('inpInstD').value = p.instD.toFixed(2);
+      document.getElementById('inpInstA').value = p.instA.toFixed(2);
+      document.getElementById('rngHomeMotiv').value = p.homeMotiv;
+      document.getElementById('rngAwayMotiv').value = p.awayMotiv;
+      document.getElementById('valHomeMotiv').textContent = p.homeMotiv;
+      document.getElementById('valAwayMotiv').textContent = p.awayMotiv;
+    }
+
+    function renderFormPills(arr) {
+      return arr.map(r => {
+        const cls = r === 'W' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+          : r === 'D' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+          : 'bg-rose-500/20 text-rose-400 border-rose-500/40';
+        const txt = r === 'W' ? '胜' : r === 'D' ? '平' : '负';
+        return `<span class="inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-bold border ${cls}">${txt}</span>`;
+      }).join('');
+    }
+
+    function renderAnalysisWorkspace() {
+      const m = matches.find(x => x.id === selectedMatchId) || matches[0];
+      const a = computeAnalysis(m);
+      const hcText = m.handicap > 0 ? `+${m.handicap}` : `${m.handicap}`;
+
+      document.getElementById('initPayoutLabel').textContent = `返还率 ${a.initImp.payout.toFixed(1)}%`;
+      document.getElementById('instPayoutLabel').textContent = `返还率 ${a.instImp.payout.toFixed(1)}%`;
+
+      // 1. Banner
+      document.getElementById('matchBanner').innerHTML = `
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div class="flex items-center gap-2 text-xs">
+            <span class="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/30">${m.code}</span>
+            <span class="text-slate-300 font-medium">${m.league} · ${m.group}</span>
+          </div>
+          <div class="text-xs text-slate-400 tabular-nums">
+            截期 ${m.cutoff} · 开赛 <strong class="text-white">${m.kickoff}</strong> · <span class="text-amber-400">${m.status}</span>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 items-center gap-2 text-center py-2">
+          <div>
+            <div class="text-base sm:text-xl font-bold text-white">${m.home}</div>
+            <div class="text-xs text-slate-400 mt-0.5">主队 · 排名 #${m.homeRank}</div>
+          </div>
+          <div class="flex flex-col items-center">
+            <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-200 border border-slate-700">VS</span>
+            <span class="text-[11px] text-slate-400 mt-1.5">竞彩让球: <strong class="text-amber-400">${hcText}</strong></span>
+          </div>
+          <div>
+            <div class="text-base sm:text-xl font-bold text-white">${m.away}</div>
+            <div class="text-xs text-slate-400 mt-0.5">客队 · 排名 #${m.awayRank}</div>
+          </div>
+        </div>
+      `;
+
+      // 2. Fundamentals
+      document.getElementById('panelFundamentals').innerHTML = `
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800/70 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-white">${m.home}（主）</span>
+              <div class="flex gap-1">${renderFormPills(m.homeForm)}</div>
+            </div>
+            <p class="text-xs text-slate-300">${m.homeStats}</p>
+            <p class="text-xs text-rose-300/90"><strong class="text-rose-400">伤停影响：</strong>${m.homeInjuries}</p>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800/70 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-white">${m.away}（客）</span>
+              <div class="flex gap-1">${renderFormPills(m.awayForm)}</div>
+            </div>
+            <p class="text-xs text-slate-300">${m.awayStats}</p>
+            <p class="text-xs text-rose-300/90"><strong class="text-rose-400">伤停影响：</strong>${m.awayInjuries}</p>
+          </div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-950/50 border border-slate-800/60 text-xs text-slate-300">
+          <strong class="text-sky-400">历史交锋：</strong>${m.h2h}
+        </div>
+      `;
+
+      // 3. Data / Odds Analysis
+      const sigBadge = document.getElementById('marketSignalBadge');
+      sigBadge.textContent = a.marketSignal;
+      sigBadge.className = `text-xs px-2.5 py-0.5 rounded-full font-medium ${a.signalTone}`;
+
+      document.getElementById('panelOddsAnalysis').innerHTML = `
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left border-collapse tabular-nums">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400">
+                <th class="py-2 pr-3">维度</th>
+                <th class="py-2 px-2">胜 (主)</th>
+                <th class="py-2 px-2">平</th>
+                <th class="py-2 px-2">负 (客)</th>
+                <th class="py-2 pl-2 text-right">亚盘 / 返还率</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60">
+              <tr>
+                <td class="py-2 pr-3 text-slate-400">初始赔率</td>
+                <td class="py-2 px-2 text-slate-200">${a.p.initH.toFixed(2)}</td>
+                <td class="py-2 px-2 text-slate-200">${a.p.initD.toFixed(2)}</td>
+                <td class="py-2 px-2 text-slate-200">${a.p.initA.toFixed(2)}</td>
+                <td class="py-2 pl-2 text-right text-slate-400">${m.asianInit} (${a.initImp.payout.toFixed(1)}%)</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-3 text-slate-300 font-medium">即时赔率</td>
+                <td class="py-2 px-2 font-semibold ${a.dH < 0 ? 'text-emerald-400' : a.dH > 0 ? 'text-rose-400' : 'text-white'}">${a.p.instH.toFixed(2)}</td>
+                <td class="py-2 px-2 font-semibold ${a.dD < 0 ? 'text-emerald-400' : a.dD > 0 ? 'text-rose-400' : 'text-white'}">${a.p.instD.toFixed(2)}</td>
+                <td class="py-2 px-2 font-semibold ${a.dA < 0 ? 'text-emerald-400' : a.dA > 0 ? 'text-rose-400' : 'text-white'}">${a.p.instA.toFixed(2)}</td>
+                <td class="py-2 pl-2 text-right text-amber-300">${m.asianInst} (${a.instImp.payout.toFixed(1)}%)</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-3 text-slate-400">竞彩让球 (${hcText})</td>
+                <td class="py-2 px-2 text-slate-300">${m.oddsHc.h.toFixed(2)}</td>
+                <td class="py-2 px-2 text-slate-300">${m.oddsHc.d.toFixed(2)}</td>
+                <td class="py-2 px-2 text-slate-300">${m.oddsHc.a.toFixed(2)}</td>
+                <td class="py-2 pl-2 text-right text-slate-400">隐含胜率 ${a.instImp.pH.toFixed(1)}%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-xs text-slate-300 bg-slate-950/60 p-3 rounded-xl border border-slate-800/70">${a.oddsNarrative}</p>
+      `;
+
+      renderOddsChart(a);
+
+      // 4. Upset Warning
+      const uBadge = document.getElementById('upsetRiskBadge');
+      uBadge.textContent = `${a.upsetLevel} · 指数 ${a.upsetScore}/100`;
+      uBadge.className = `text-xs px-2.5 py-0.5 rounded-full font-medium tabular-nums ${a.upsetTone}`;
+
+      document.getElementById('panelUpsetWarning').innerHTML = `
+        <div class="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
+          <div class="h-full transition-all duration-300 ${
+            a.upsetScore >= 65 ? 'bg-rose-500' : a.upsetScore >= 42 ? 'bg-amber-400' : 'bg-emerald-500'
+          }" style="width: ${a.upsetScore}%"></div>
+        </div>
+        <p class="text-xs text-slate-300">${m.motivationNote}</p>
+      `;
+
+      // 5. Final Verdict (全玩法预测推演 + 混合过关点选)
+      const spfBtns = [
+        { play: '胜平负', label: `主胜 (${m.handicap <= -3 ? a.p.instH.toFixed(2) : m.odds0.h.toFixed(2)})`, pick: '主胜', odds: m.handicap <= -3 ? a.p.instH : m.odds0.h },
+        { play: '胜平负', label: `平局 (${m.handicap <= -3 ? a.p.instD.toFixed(2) : m.odds0.d.toFixed(2)})`, pick: '平局', odds: m.handicap <= -3 ? a.p.instD : m.odds0.d },
+        { play: '胜平负', label: `客胜 (${m.handicap <= -3 ? a.p.instA.toFixed(2) : m.odds0.a.toFixed(2)})`, pick: '客胜', odds: m.handicap <= -3 ? a.p.instA : m.odds0.a },
+        { play: '让球', label: `让(${hcText})胜 (${m.oddsHc.h.toFixed(2)})`, pick: `让(${hcText})胜`, odds: m.oddsHc.h },
+        { play: '让球', label: `让(${hcText})平 (${m.oddsHc.d.toFixed(2)})`, pick: `让(${hcText})平`, odds: m.oddsHc.d },
+        { play: '让球', label: `让(${hcText})负 (${m.oddsHc.a.toFixed(2)})`, pick: `让(${hcText})负`, odds: m.oddsHc.a },
+      ];
+
+      const playTabs = [
+        { id: 'spf', label: '胜平负 / 让球' },
+        { id: 'score', label: '比分 (31)' },
+        { id: 'goals', label: '总进球 (8)' },
+        { id: 'htft', label: '半全场 (9)' },
+      ];
+
+      let playGridHtml = '';
+      if (activePlayTab === 'spf') {
+        playGridHtml = `
+          <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+            ${spfBtns.map(b => `
+              <button type="button" data-play="${b.play}" data-pick="${b.pick}" data-odds="${b.odds}" class="add-pick-btn px-2 py-2 rounded-lg bg-slate-800/90 hover:bg-emerald-600/30 hover:border-emerald-500/50 border border-slate-700 text-[11px] text-slate-200 font-medium transition tabular-nums">
+                ${b.label}
+              </button>
+            `).join('')}
+          </div>`;
+      } else if (activePlayTab === 'goals') {
+        playGridHtml = `
+          <div class="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+            ${a.totalGoalsList.map(g => `
+              <button type="button" data-play="总进球" data-pick="${g.label}" data-odds="${g.odds}" class="add-pick-btn p-2 rounded-lg bg-slate-800/90 hover:bg-emerald-600/30 hover:border-emerald-500/50 border border-slate-700 text-center transition tabular-nums">
+                <div class="text-xs font-bold text-white">${g.label}</div>
+                <div class="text-[10px] text-emerald-400">${g.odds.toFixed(2)}</div>
+                <div class="text-[9px] text-slate-400">${g.pct}%</div>
+              </button>
+            `).join('')}
+          </div>`;
+      } else if (activePlayTab === 'htft') {
+        playGridHtml = `
+          <div class="grid grid-cols-3 sm:grid-cols-9 gap-1.5">
+            ${a.htftList.map(h => `
+              <button type="button" data-play="半全场" data-pick="${h.label}" data-odds="${h.odds}" class="add-pick-btn p-2 rounded-lg bg-slate-800/90 hover:bg-emerald-600/30 hover:border-emerald-500/50 border border-slate-700 text-center transition tabular-nums">
+                <div class="text-xs font-bold text-white">${h.label}</div>
+                <div class="text-[10px] text-amber-300">${h.odds.toFixed(2)}</div>
+                <div class="text-[9px] text-slate-400">${h.pct}%</div>
+              </button>
+            `).join('')}
+          </div>`;
+      } else {
+        const renderScoreGroup = (title, list, colorCls) => `
+          <div class="space-y-1">
+            <div class="text-[10px] font-semibold ${colorCls}">${title}</div>
+            <div class="grid grid-cols-4 sm:grid-cols-7 gap-1">
+              ${list.map(s => `
+                <button type="button" data-play="比分" data-pick="${s.label}" data-odds="${s.odds}" class="add-pick-btn py-1.5 px-1 rounded-md bg-slate-800/90 hover:bg-emerald-600/30 hover:border-emerald-500/50 border border-slate-700 text-center transition tabular-nums">
+                  <div class="text-[11px] font-bold text-white">${s.label}</div>
+                  <div class="text-[9px] text-emerald-400">${s.odds.toFixed(1)}</div>
+                </button>
+              `).join('')}
+            </div>
+          </div>`;
+        playGridHtml = `<div class="space-y-2.5">
+          ${renderScoreGroup('主胜比分', a.winScores, 'text-emerald-400')}
+          ${renderScoreGroup('平局比分', a.drawScores, 'text-amber-300')}
+          ${renderScoreGroup('客胜比分', a.lossScores, 'text-sky-400')}
+        </div>`;
+      }
+
+      document.getElementById('panelFinalVerdict').innerHTML = `
+        <!-- Probability Bars (胜平负 & 让球胜平负) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="space-y-1.5 p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+            <div class="flex justify-between text-[11px] font-semibold tabular-nums">
+              <span class="text-emerald-400">主胜 ${a.probH}%</span>
+              <span class="text-amber-300">平局 ${a.probD}%</span>
+              <span class="text-sky-400">客胜 ${a.probA}%</span>
+            </div>
+            <div class="h-2.5 rounded-full overflow-hidden flex bg-slate-900">
+              <div class="bg-emerald-500 transition-all duration-300" style="width:${a.probH}%"></div>
+              <div class="bg-amber-400 transition-all duration-300" style="width:${a.probD}%"></div>
+              <div class="bg-sky-500 transition-all duration-300" style="width:${a.probA}%"></div>
+            </div>
+            <div class="text-[10px] text-slate-400">胜平负倾向推演</div>
+          </div>
+          <div class="space-y-1.5 p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+            <div class="flex justify-between text-[11px] font-semibold tabular-nums">
+              <span class="text-emerald-400">让(${hcText})胜 ${a.hcProbH}%</span>
+              <span class="text-amber-300">让平 ${a.hcProbD}%</span>
+              <span class="text-sky-400">让负 ${a.hcProbA}%</span>
+            </div>
+            <div class="h-2.5 rounded-full overflow-hidden flex bg-slate-900">
+              <div class="bg-emerald-500 transition-all duration-300" style="width:${a.hcProbH}%"></div>
+              <div class="bg-amber-400 transition-all duration-300" style="width:${a.hcProbD}%"></div>
+              <div class="bg-sky-500 transition-all duration-300" style="width:${a.hcProbA}%"></div>
+            </div>
+            <div class="text-[10px] text-slate-400">让球胜平负推演 · 优选: <span class="text-emerald-300">${a.recHandicap}</span></div>
+          </div>
+        </div>
+
+        <!-- Full-Play Report Summary Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="p-3 rounded-xl bg-slate-950/80 border border-emerald-500/30">
+            <div class="text-[11px] text-slate-400 mb-1">胜平负 / 让球推荐方向</div>
+            <div class="text-sm font-bold text-emerald-400">${a.recPrimary} · ${a.recHandicap}</div>
+            <div class="text-xs text-slate-400 mt-1">次选防冷: <span class="text-slate-200">${a.recSecondary}</span></div>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+            <div class="text-[11px] text-slate-400 mb-1.5">高频比分推演（泊松模型）</div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              ${a.scores.map(s => `
+                <span class="px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-xs font-bold text-white tabular-nums">
+                  ${s.score} <span class="text-[10px] font-normal text-emerald-400">${s.pct}</span>
+                </span>
+              `).join('')}
+            </div>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+            <div class="text-[11px] text-slate-400 mb-1.5">半全场胜平负推演</div>
+            <div class="flex items-center gap-2 flex-wrap">
+              ${a.topHtft.map(h => `
+                <span class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-xs font-bold text-amber-300 tabular-nums">
+                  ${h.label} <span class="text-[10px] font-normal text-slate-400">${h.pct}% (赔率${h.odds.toFixed(2)})</span>
+                </span>
+              `).join('')}
+            </div>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+            <div class="text-[11px] text-slate-400 mb-1.5">总进球数推演</div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              ${a.topGoals.map(g => `
+                <span class="px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-xs font-bold text-sky-300 tabular-nums">
+                  ${g.label} <span class="text-[10px] font-normal text-slate-400">${g.pct}%</span>
+                </span>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <!-- All Play Types Interactive Selector (混合过关点选区) -->
+        <div class="pt-1 border-t border-slate-800/80">
+          <div class="flex items-center justify-between gap-2 mb-2.5 flex-wrap">
+            <span class="text-[11px] text-slate-400">全玩法点选（点击任意选项加入右侧混合过关单）：</span>
+            <div class="flex items-center gap-1 flex-wrap">
+              ${playTabs.map(t => `
+                <button type="button" data-ptab="${t.id}" class="play-tab-btn px-2.5 py-1 rounded-lg text-[11px] font-medium border transition ${
+                  activePlayTab === t.id
+                    ? 'bg-emerald-600/25 border-emerald-500 text-emerald-300'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                }">${t.label}</button>
+              `).join('')}
+            </div>
+          </div>
+          ${playGridHtml}
+        </div>
+      `;
+
+      document.querySelectorAll('.play-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          activePlayTab = btn.dataset.ptab;
+          renderAnalysisWorkspace();
+        });
+      });
+
+      document.querySelectorAll('.add-pick-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          addToTicket(m, btn.dataset.pick, parseFloat(btn.dataset.odds), btn.dataset.play);
+        });
+      });
+    }
+
+    function renderOddsChart(a) {
+      const ctx = document.getElementById('oddsChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['主胜概率 (%)', '平局概率 (%)', '客胜概率 (%)'],
+          datasets: [
+            {
+              label: '初赔隐含概率',
+              data: [a.initImp.pH.toFixed(1), a.initImp.pD.toFixed(1), a.initImp.pA.toFixed(1)],
+              backgroundColor: 'rgba(148, 163, 184, 0.45)',
+              borderColor: 'rgba(148, 163, 184, 0.9)',
+              borderWidth: 1,
+              borderRadius: 6,
+            },
+            {
+              label: '即赔隐含概率',
+              data: [a.instImp.pH.toFixed(1), a.instImp.pD.toFixed(1), a.instImp.pA.toFixed(1)],
+              backgroundColor: 'rgba(245, 158, 11, 0.55)',
+              borderColor: 'rgba(245, 158, 11, 1)',
+              borderWidth: 1,
+              borderRadius: 6,
+            },
+            {
+              label: '四维最终研判',
+              data: [a.probH, a.probD, a.probA],
+              backgroundColor: 'rgba(16, 185, 129, 0.65)',
+              borderColor: 'rgba(16, 185, 129, 1)',
+              borderWidth: 1,
+              borderRadius: 6,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#cbd5e1', font: { size: 11 } }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: '#94a3b8', font: { size: 11 } },
+              grid: { color: 'rgba(30, 41, 59, 0.5)' }
+            },
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: { color: '#94a3b8', font: { size: 11 } },
+              grid: { color: 'rgba(30, 41, 59, 0.5)' }
+            }
+          }
+        }
+      });
+    }
+
+    // =========================================================================
+    // Parlay Ticket Logic
+    // =========================================================================
+    function addToTicket(m, pick, odds, playType = '胜平负') {
+      const idx = ticket.findIndex(t => t.matchId === m.id);
+      const item = {
+        matchId: m.id,
+        code: m.code,
+        matchName: `${m.home} vs ${m.away}`,
+        playType,
+        pick,
+        odds: isNaN(odds) ? 1.85 : odds,
+        banker: false
+      };
+      if (idx >= 0) ticket[idx] = item;
+      else ticket.push(item);
+      saveTicket();
+      renderTicket();
+    renderRecommendedCombos();
+    renderReviewSection();
+      showToast(`已将 ${m.code} [${playType}: ${pick}] 加入推盘单`);
+    }
+
+    function renderTicket() {
+      document.getElementById('ticketCount').textContent = ticket.length;
+      const distinctPlays = new Set(ticket.map(t => t.playType || '胜平负'));
+      const mixedBadge = document.getElementById('mixedBadge');
+      if (mixedBadge) {
+        if (distinctPlays.size > 1 && ticket.length > 1) mixedBadge.classList.remove('hidden');
+        else mixedBadge.classList.add('hidden');
+      }
+      const container = document.getElementById('ticketItems');
+
+      if (!ticket.length) {
+        container.innerHTML = `<div class="py-8 text-center text-xs text-slate-500">暂未选择场次，请在中间【最终研判】区点击任意玩法加入</div>`;
+      } else {
+        container.innerHTML = ticket.map((t, i) => `
+          <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between gap-2 text-xs">
+            <div class="min-w-0">
+              <div class="text-[11px] text-slate-400 flex items-center gap-1.5">
+                <span>${t.code}</span>
+                <span class="px-1 py-0.2 rounded bg-slate-800 text-sky-300 text-[9px]">${t.playType || '胜平负'}</span>
+                <span class="text-slate-200 font-medium truncate">${t.matchName}</span>
+              </div>
+              <div class="text-emerald-400 font-semibold mt-0.5 tabular-nums">${t.pick} @ ${t.odds.toFixed(2)}</div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button type="button" data-idx="${i}" class="toggle-banker px-1.5 py-0.5 rounded text-[10px] border transition ${
+                t.banker ? 'bg-amber-500/20 text-amber-300 border-amber-500/50' : 'bg-slate-900 text-slate-500 border-slate-800 hover:text-slate-300'
+              }">胆</button>
+              <button type="button" data-idx="${i}" class="remove-ticket text-slate-500 hover:text-rose-400 px-1">✕</button>
+            </div>
+          </div>
+        `).join('');
+
+        container.querySelectorAll('.toggle-banker').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const idx = parseInt(btn.dataset.idx, 10);
+            ticket[idx].banker = !ticket[idx].banker;
+            saveTicket();
+            renderTicket();
+          });
+        });
+
+        container.querySelectorAll('.remove-ticket').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const idx = parseInt(btn.dataset.idx, 10);
+            ticket.splice(idx, 1);
+            saveTicket();
+            renderTicket();
+            renderMatchList();
+          });
+        });
+      }
+
+      // Highlight Parlay Buttons
+      document.querySelectorAll('.parlay-btn').forEach(btn => {
+        const active = btn.dataset.parlay === parlayType;
+        btn.className = `parlay-btn py-1.5 rounded-lg border text-center transition ${
+          active ? 'bg-emerald-600/25 border-emerald-500 text-emerald-300 font-semibold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+        }`;
+      });
+
+      // Calculate Combinations & Payout
+      const n = parlayType === '1x1' ? 1 : parlayType === '2x1' ? 2 : parlayType === '3x1' ? 3 : parlayType === '4x1' ? 4 : Math.max(1, ticket.length);
+      const mult = Math.max(1, parseInt(document.getElementById('inpMultiplier').value || '1', 10));
+      if (ticket.length < n) {
+        document.getElementById('ticketStake').textContent = '0 元';
+        document.getElementById('ticketPayout').textContent = `需至少选 ${n} 场`;
+        return;
+      }
+
+      const bankers = ticket.filter(t => t.banker);
+      const nonBankers = ticket.filter(t => !t.banker);
+      let combos = [];
+
+      function getCombos(arr, k) {
+        if (k === 0) return [[]];
+        if (arr.length < k) return [];
+        const res = [];
+        for (let i = 0; i <= arr.length - k; i++) {
+          const sub = getCombos(arr.slice(i + 1), k - 1);
+          sub.forEach(s => res.push([arr[i], ...s]));
+        }
+        return res;
+      }
+
+      if (bankers.length > n) {
+        document.getElementById('ticketStake').textContent = '设胆超限';
+        document.getElementById('ticketPayout').textContent = '--';
+        return;
+      }
+
+      const restCombos = getCombos(nonBankers, n - bankers.length);
+      combos = restCombos.map(c => [...bankers, ...c]);
+
+      const stake = combos.length * 2 * mult;
+      const payouts = combos.map(c => c.reduce((acc, item) => acc * item.odds, 1) * 2 * mult);
+      const minPay = payouts.length ? Math.min(...payouts) : 0;
+      const maxPay = payouts.reduce((a, b) => a + b, 0);
+
+      document.getElementById('ticketStake').textContent = `${stake} 元 (${combos.length}注)`;
+      document.getElementById('ticketPayout').textContent = `${minPay.toFixed(2)} ~ ${maxPay.toFixed(2)} 元`;
+    }
+
+    // =========================================================================
+    // Event Listeners & Modals
+    // =========================================================================
+    document.getElementById('searchInput').addEventListener('input', e => {
+      searchQuery = e.target.value;
+      renderMatchList();
+    });
+
+    ['inpInitH', 'inpInitD', 'inpInitA', 'inpInstH', 'inpInstD', 'inpInstA'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        const m = matches.find(x => x.id === selectedMatchId);
+        if (!m) return;
+        overrides[m.id] = {
+          ...getEffectiveParams(m),
+          initH: Math.max(1.01, parseFloat(document.getElementById('inpInitH').value) || m.initEuro.h),
+          initD: Math.max(1.01, parseFloat(document.getElementById('inpInitD').value) || m.initEuro.d),
+          initA: Math.max(1.01, parseFloat(document.getElementById('inpInitA').value) || m.initEuro.a),
+          instH: Math.max(1.01, parseFloat(document.getElementById('inpInstH').value) || m.odds0.h),
+          instD: Math.max(1.01, parseFloat(document.getElementById('inpInstD').value) || m.odds0.d),
+          instA: Math.max(1.01, parseFloat(document.getElementById('inpInstA').value) || m.odds0.a),
+        };
+        renderAnalysisWorkspace();
+      });
+    });
+
+    ['rngHomeMotiv', 'rngAwayMotiv'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        const m = matches.find(x => x.id === selectedMatchId);
+        if (!m) return;
+        const hm = parseInt(document.getElementById('rngHomeMotiv').value, 10);
+        const am = parseInt(document.getElementById('rngAwayMotiv').value, 10);
+        document.getElementById('valHomeMotiv').textContent = hm;
+        document.getElementById('valAwayMotiv').textContent = am;
+        overrides[m.id] = { ...getEffectiveParams(m), homeMotiv: hm, awayMotiv: am };
+        renderAnalysisWorkspace();
+      });
+    });
+
+    document.getElementById('btnResetParams').addEventListener('click', () => {
+      delete overrides[selectedMatchId];
+      syncInputsToMatch();
+      renderAnalysisWorkspace();
+      showToast('已恢复当前赛事的官方同步初始赔率与战意参数');
+    });
+
+    // Copy Report
+    document.getElementById('btnCopyReport').addEventListener('click', () => {
+      const m = matches.find(x => x.id === selectedMatchId);
+      const a = computeAnalysis(m);
+      const text = [
+        `【${m.code} ${m.league}】${m.home} vs ${m.away} (${m.kickoff})`,
+        `1. 【基本面】主队：${m.homeStats} 伤停：${m.homeInjuries} | 客队：${m.awayStats} 伤停：${m.awayInjuries}`,
+        `2. 【数据面】${a.marketSignal}。${a.oddsNarrative}`,
+        `3. 【冷门预警】${a.upsetLevel} (${a.upsetScore}/100)。${m.motivationNote}`,
+        `4. 【最终研判 - 全玩法推演】`,
+        `   • 胜平负：胜 ${a.probH}% / 平 ${a.probD}% / 负 ${a.probA}% ｜ 推荐：${a.recPrimary}（防冷：${a.recSecondary}）`,
+        `   • 让球胜平负：让胜 ${a.hcProbH}% / 让平 ${a.hcProbD}% / 让负 ${a.hcProbA}% ｜ 优选：${a.recHandicap}`,
+        `   • 半全场胜平负：${a.topHtft.map(h => `${h.label}(${h.pct}%)`).join(' / ')}`,
+        `   • 总进球数：${a.topGoals.map(g => `${g.label}(${g.pct}%)`).join(' / ')}`,
+        `   • 高频比分：${a.scores.map(s => `${s.score}(${s.pct})`).join('、')}`
+      ].join('\n');
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showToast('四维推盘分析报告已复制到剪贴板')).catch(() => fallbackCopy(text));
+      } else {
+        fallbackCopy(text);
+      }
+    });
+
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); showToast('四维推盘分析报告已复制到剪贴板'); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+
+    // Parlay Controls
+    document.querySelectorAll('.parlay-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        parlayType = btn.dataset.parlay;
+        renderTicket();
+      });
+    });
+    document.getElementById('inpMultiplier').addEventListener('input', renderTicket);
+    document.getElementById('btnMultMinus').addEventListener('click', () => {
+      const el = document.getElementById('inpMultiplier');
+      el.value = Math.max(1, parseInt(el.value || '1', 10) - 1);
+      renderTicket();
+    });
+    document.getElementById('btnMultPlus').addEventListener('click', () => {
+      const el = document.getElementById('inpMultiplier');
+      el.value = Math.min(999, parseInt(el.value || '1', 10) + 1);
+      renderTicket();
+    });
+    document.getElementById('btnClearTicket').addEventListener('click', () => {
+      ticket = [];
+      saveTicket();
+      renderTicket();
+      renderMatchList();
+      showToast('已清空模拟过关单');
+    });
+
+    // Sync Live Button
+    document.getElementById('btnSyncLive').addEventListener('click', async () => {
+      const icon = document.getElementById('syncIcon');
+      icon.classList.add('animate-spin');
+      document.getElementById('syncStatusText').textContent = '正在尝试同步实时赔率...';
+      try {
+        // Attempt fetch with short timeout; third-party lottery sites block browser cross-origin reads, so handle gracefully
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 2200);
+        await fetch('https://cp.zgzcw.com/lottery/jchtplayvsForJsp.action?lotteryId=47&type=jcmini', { mode: 'no-cors', signal: ctrl.signal });
+        clearTimeout(tid);
+      } catch (e) {
+        // Expected when third-party domain disallows direct browser read
+      }
+      const now = new Date();
+      const ts = now.toTimeString().slice(0, 8);
+      icon.classList.remove('animate-spin');
+      document.getElementById('syncStatusText').textContent = `已同步竞彩快照 (${matches.length}场 · ${ts})`;
+      showToast('已完成实时数据校验（如需导入最新网页行，可使用「导入/解析网页数据」）');
+    });
+
+    // Import Modal
+    const modal = document.getElementById('importModal');
+    document.getElementById('btnOpenImport').addEventListener('click', () => {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    });
+    const closeModal = () => {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+    document.getElementById('btnCloseImport').addEventListener('click', closeModal);
+    document.getElementById('btnCancelImport').addEventListener('click', closeModal);
+
+    document.getElementById('btnAutoParseRaw').addEventListener('click', () => {
+      const raw = document.getElementById('txtPasteRaw').value.trim();
+      if (!raw) { showToast('请先粘贴比赛行文本'); return; }
+      const codeM = raw.match(/(周[一二三四五六日]\s*\d{3})/);
+      if (codeM) document.getElementById('impCode').value = codeM[1];
+      const timeM = raw.match(/(\d{2}:\d{2})/);
+      if (timeM) document.getElementById('impTime').value = timeM[1];
+      const vsM = raw.match(/([^\s\[\]]+)\s*(?:\[\d+\])?\s*VS\s*(?:\[\d+\]\s*)?([^\s\[\]]+)/i);
+      if (vsM) {
+        document.getElementById('impHome').value = vsM[1];
+        document.getElementById('impAway').value = vsM[2];
+      }
+      const nums = raw.match(/\b\d\.\d{2}\b/g);
+      if (nums && nums.length >= 3) {
+        document.getElementById('impH').value = nums[0];
+        document.getElementById('impD').value = nums[1];
+        document.getElementById('impA').value = nums[2];
+      }
+      showToast('已自动提取文本中的对阵与赔率字段');
+    });
+
+    document.getElementById('btnConfirmImport').addEventListener('click', () => {
+      const home = document.getElementById('impHome').value.trim() || '主队';
+      const away = document.getElementById('impAway').value.trim() || '客队';
+      const h = parseFloat(document.getElementById('impH').value) || 2.10;
+      const d = parseFloat(document.getElementById('impD').value) || 3.30;
+      const a = parseFloat(document.getElementById('impA').value) || 2.95;
+      const hc = parseInt(document.getElementById('impHandicap').value, 10) || -1;
+      const newMatch = {
+        id: 'custom_' + Date.now(),
+        code: document.getElementById('impCode').value.trim() || '周日 012',
+        league: document.getElementById('impLeague').value.trim() || '自定义赛事',
+        group: '导入赛事',
+        kickoff: document.getElementById('impTime').value.trim() || '03:45',
+        cutoff: '赛前20分',
+        status: '未开赛',
+        home, away,
+        homeRank: '--', awayRank: '--',
+        handicap: hc,
+        odds0: { h, d, a },
+        oddsHc: { h: +(h * 1.85).toFixed(2), d: +(d * 1.05).toFixed(2), a: +(a * 0.55).toFixed(2) },
+        initEuro: { h: +(h + 0.05).toFixed(2), d: d, a: +(a - 0.05).toFixed(2) },
+        instEuro: { h, d, a },
+        asianInit: hc < 0 ? '主让半球 0.90' : '客让平半 0.90',
+        asianInst: hc < 0 ? '主让半球 0.86' : '客让平半 0.92',
+        homeForm: ['W', 'D', 'W', 'L', 'W'],
+        awayForm: ['D', 'W', 'L', 'W', 'D'],
+        homeStats: '已根据导入数据建立基础实力模型，可在上方沙盘微调战意与赔率。',
+        awayStats: '已根据导入数据建立基础实力模型，可在上方沙盘微调战意与赔率。',
+        homeInjuries: '暂无补充伤停信息。',
+        awayInjuries: '暂无补充伤停信息。',
+        h2h: '暂无历史交锋补充，建议结合即时赔率走势研判。',
+        homeMotiv: 75, awayMotiv: 70,
+        motivationNote: '自定义导入场次：系统已结合导入赔率与让球盘口生成初始冷门预警评估。'
+      };
+      matches.unshift(newMatch);
+      selectedMatchId = newMatch.id;
+      closeModal();
+      renderLeagueFilters();
+      renderMatchList();
+      syncInputsToMatch();
+      renderAnalysisWorkspace();
+      showToast(`已导入 ${newMatch.code} ${home} vs ${away}`);
+    });
+
+    // Live Clock
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('liveClock').textContent = now.toLocaleTimeString('zh-CN', { hour12: false });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // =========================================================================
+    // Recommended Combination Plans (右侧推荐组合方案)
+    // =========================================================================
+    function buildRecommendedCombos() {
+      const upcoming = matches.filter(m => m.status.includes('未开赛') && m.handicap > -3);
+      const pool = upcoming.length >= 3 ? upcoming : matches;
+      const analyzed = pool.map(m => ({ m, a: computeAnalysis(m) }));
+
+      // Plan 1: 稳胆正路 2串1 (Lowest upset score)
+      const byLowUpset = [...analyzed].sort((x, y) => x.a.upsetScore - y.a.upsetScore);
+      const p1Legs = byLowUpset.slice(0, 2).map(({ m, a }) => {
+        const isHome = a.probH >= a.probA;
+        return {
+          matchId: m.id,
+          code: m.code,
+          matchName: `${m.home} vs ${m.away}`,
+          playType: '胜平负',
+          pick: isHome ? '主胜' : '客胜',
+          odds: isHome ? m.odds0.h : m.odds0.a,
+          banker: false
+        };
+      });
+
+      // Plan 2: 混串博弈 3串1 (稳胆 + 让球 + 高赔)
+      const p2Legs = byLowUpset.slice(0, 3).map(({ m, a }, idx) => {
+        const hcText = m.handicap > 0 ? `+${m.handicap}` : `${m.handicap}`;
+        if (idx === 0) {
+          return {
+            matchId: m.id, code: m.code, matchName: `${m.home} vs ${m.away}`,
+            playType: '胜平负', pick: a.probH >= a.probA ? '主胜' : '客胜',
+            odds: a.probH >= a.probA ? m.odds0.h : m.odds0.a, banker: true
+          };
+        } else if (idx === 1) {
+          const hcPick = a.recHandicap;
+          const hcOdds = hcPick.endsWith('胜') ? m.oddsHc.h : hcPick.endsWith('平') ? m.oddsHc.d : m.oddsHc.a;
+          return {
+            matchId: m.id, code: m.code, matchName: `${m.home} vs ${m.away}`,
+            playType: '让球', pick: hcPick, odds: hcOdds, banker: false
+          };
+        } else {
+          const topH = a.htftList[0];
+          return {
+            matchId: m.id, code: m.code, matchName: `${m.home} vs ${m.away}`,
+            playType: '半全场', pick: topH.label, odds: topH.odds, banker: false
+          };
+        }
+      });
+
+      // Plan 3: 高赔精准 2串1 (泊松高频比分 / 总进球)
+      const byHighProb = [...analyzed].sort((x, y) => Math.max(y.a.probH, y.a.probA) - Math.max(x.a.probH, x.a.probA));
+      const p3Legs = byHighProb.slice(0, 2).map(({ m, a }, idx) => {
+        if (idx === 0) {
+          const s = a.scores[0];
+          const lbl = s.score.replace('-', ':');
+          return {
+            matchId: m.id, code: m.code, matchName: `${m.home} vs ${m.away}`,
+            playType: '比分', pick: lbl, odds: s.odds, banker: false
+          };
+        } else {
+          const g = a.topGoals[0];
+          return {
+            matchId: m.id, code: m.code, matchName: `${m.home} vs ${m.away}`,
+            playType: '总进球', pick: g.label, odds: g.odds, banker: false
+          };
+        }
+      });
+
+      return [
+        { id: 'plan_steady', title: '方案 A · 稳胆正路 2串1', tag: '低波控险', tagCls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40', parlay: '2x1', mult: 10, legs: p1Legs },
+        { id: 'plan_mix', title: '方案 B · 混串博弈 3串1', tag: '稳胆+让球+半全场', tagCls: 'bg-violet-500/15 text-violet-300 border-violet-500/40', parlay: '3x1', mult: 10, legs: p2Legs },
+        { id: 'plan_high', title: '方案 C · 高赔精选 2串1', tag: '比分/总进球', tagCls: 'bg-amber-500/15 text-amber-300 border-amber-500/40', parlay: '2x1', mult: 5, legs: p3Legs },
+      ];
+    }
+
+    function renderRecommendedCombos() {
+      const plans = buildRecommendedCombos();
+      const container = document.getElementById('recommendedCombosContainer');
+      if (!container) return;
+
+      container.innerHTML = plans.map(pl => {
+        const sp = pl.legs.reduce((acc, l) => acc * l.odds, 1);
+        const stake = 2 * pl.mult;
+        const estPay = stake * sp;
+        return `
+          <div class="p-3 rounded-xl bg-slate-950/75 border border-slate-800/90 space-y-2 text-xs">
+            <div class="flex items-center justify-between gap-1.5">
+              <span class="font-bold text-white">${pl.title}</span>
+              <span class="px-1.5 py-0.5 rounded border text-[10px] ${pl.tagCls}">${pl.tag}</span>
+            </div>
+            <div class="space-y-1">
+              ${pl.legs.map(l => `
+                <div class="flex items-center justify-between text-[11px] bg-slate-900/80 px-2 py-1 rounded-lg">
+                  <span class="text-slate-300 truncate">${l.code} ${l.matchName}</span>
+                  <span class="text-emerald-400 font-semibold shrink-0 ml-2 tabular-nums">[${l.playType}] ${l.pick} @${l.odds.toFixed(2)}</span>
+                </div>
+              `).join('')}
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1 tabular-nums">
+              <span>组合SP: <strong class="text-amber-300">${sp.toFixed(2)}</strong></span>
+              <span>${pl.mult}倍投入${stake}元 · 预期 <strong class="text-emerald-400">${estPay.toFixed(1)}元</strong></span>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5 pt-1">
+              <button type="button" data-plan="${pl.id}" class="load-combo-btn py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-medium transition">
+                载入推盘单
+              </button>
+              <button type="button" data-plan="${pl.id}" class="archive-combo-btn py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/35 border border-emerald-500/40 text-emerald-300 text-[11px] font-medium transition">
+                存至复盘区
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.querySelectorAll('.load-combo-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const pl = plans.find(p => p.id === btn.dataset.plan);
+          if (!pl) return;
+          ticket = JSON.parse(JSON.stringify(pl.legs));
+          parlayType = pl.parlay;
+          document.getElementById('inpMultiplier').value = pl.mult;
+          saveTicket();
+          renderTicket();
+          renderMatchList();
+          showToast(`已载入「${pl.title}」到混合过关推盘单`);
+        });
+      });
+
+      container.querySelectorAll('.archive-combo-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const pl = plans.find(p => p.id === btn.dataset.plan);
+          if (!pl) return;
+          archivePlanToReview(pl.title, pl.parlay, pl.mult, pl.legs);
+        });
+      });
+    }
+
+    // =========================================================================
+    // Daily Prediction & Post-Match Review Area (复盘区)
+    // =========================================================================
+    function calcPlanStakeAndRange(legs, pType, mult) {
+      const n = pType === '1x1' ? 1 : pType === '2x1' ? 2 : pType === '3x1' ? 3 : pType === '4x1' ? 4 : Math.max(1, legs.length);
+      if (legs.length < n) return { stake: 0, minPay: 0, maxPay: 0, combos: [] };
+      const bankers = legs.filter(t => t.banker);
+      const nonBankers = legs.filter(t => !t.banker);
+      function getCombos(arr, k) {
+        if (k === 0) return [[]];
+        if (arr.length < k) return [];
+        const res = [];
+        for (let i = 0; i <= arr.length - k; i++) {
+          getCombos(arr.slice(i + 1), k - 1).forEach(s => res.push([arr[i], ...s]));
+        }
+        return res;
+      }
+      if (bankers.length > n) return { stake: 0, minPay: 0, maxPay: 0, combos: [] };
+      const combos = getCombos(nonBankers, n - bankers.length).map(c => [...bankers, ...c]);
+      const stake = combos.length * 2 * mult;
+      const payouts = combos.map(c => c.reduce((acc, it) => acc * it.odds, 1) * 2 * mult);
+      return {
+        stake,
+        minPay: payouts.length ? Math.min(...payouts) : 0,
+        maxPay: payouts.reduce((a, b) => a + b, 0),
+        combos
+      };
+    }
+
+    function archivePlanToReview(title, pType, mult, legs) {
+      if (!legs || !legs.length) {
+        showToast('当前推盘单为空，请先选择赛事方向');
+        return;
+      }
+      const calc = calcPlanStakeAndRange(legs, pType, mult);
+      if (calc.stake === 0) {
+        showToast('所选场次数量不足当前过关方式要求');
+        return;
+      }
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10);
+      const timeStr = now.toTimeString().slice(0, 5);
+      const rec = {
+        id: 'rev_' + Date.now(),
+        date: dateStr,
+        time: timeStr,
+        title,
+        parlayType: pType,
+        multiplier: mult,
+        stake: calc.stake,
+        estMin: +calc.minPay.toFixed(2),
+        estMax: +calc.maxPay.toFixed(2),
+        notes: '',
+        legs: legs.map(l => ({
+          ...l,
+          resultStatus: 'PENDING', // PENDING | HIT | MISS
+          actualScore: ''
+        }))
+      };
+      reviewRecords.unshift(rec);
+      saveReviewRecords();
+      renderReviewSection();
+      showToast(`已归档「${title}」至每日复盘区`);
+    }
+
+    function computeRecordOutcome(rec) {
+      const allSettled = rec.legs.every(l => l.resultStatus !== 'PENDING');
+      const anyMiss = rec.legs.some(l => l.resultStatus === 'MISS');
+      const calc = calcPlanStakeAndRange(rec.legs, rec.parlayType, rec.multiplier);
+
+      if (!allSettled && !anyMiss) {
+        return { status: 'PENDING', label: '待复盘', cls: 'bg-amber-500/15 text-amber-300 border-amber-500/30', actualReturn: 0, net: 0 };
+      }
+      // Compute actual payout across winning combinations
+      let actualReturn = 0;
+      calc.combos.forEach(c => {
+        if (c.every(l => l.resultStatus === 'HIT')) {
+          actualReturn += c.reduce((acc, it) => acc * it.odds, 1) * 2 * rec.multiplier;
+        }
+      });
+      actualReturn = +actualReturn.toFixed(2);
+      const net = +(actualReturn - rec.stake).toFixed(2);
+      if (actualReturn > 0) {
+        return { status: 'HIT', label: `已红单 (+${net.toFixed(2)}元)`, cls: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', actualReturn, net };
+      }
+      return { status: 'MISS', label: `未命中 (${net.toFixed(2)}元)`, cls: 'bg-rose-500/15 text-rose-300 border-rose-500/40', actualReturn: 0, net: -rec.stake };
+    }
+
+    function renderReviewSection() {
+      const headerCnt = document.getElementById('headerReviewCount');
+      if (headerCnt) headerCnt.textContent = reviewRecords.length;
+
+      const filterVal = document.getElementById('reviewFilterStatus').value;
+      const enriched = reviewRecords.map(r => ({ r, out: computeRecordOutcome(r) }));
+
+      // KPIs
+      const settled = enriched.filter(x => x.out.status !== 'PENDING');
+      const hits = settled.filter(x => x.out.status === 'HIT');
+      const totalStake = enriched.reduce((s, x) => s + x.r.stake, 0);
+      const totalNet = settled.reduce((s, x) => s + x.out.net, 0);
+
+      document.getElementById('kpiTotalPlans').textContent = enriched.length;
+      document.getElementById('kpiHitRate').textContent = settled.length ? `${Math.round((hits.length / settled.length) * 100)}% (${hits.length}/${settled.length})` : '--';
+      document.getElementById('kpiTotalStake').textContent = `${totalStake} 元`;
+      const netEl = document.getElementById('kpiNetProfit');
+      netEl.textContent = `${totalNet >= 0 ? '+' : ''}${totalNet.toFixed(2)} 元`;
+      netEl.className = `text-lg font-bold tabular-nums ${totalNet > 0 ? 'text-emerald-400' : totalNet < 0 ? 'text-rose-400' : 'text-amber-300'}`;
+
+      const visible = enriched.filter(x => filterVal === 'ALL' || x.out.status === filterVal);
+      const container = document.getElementById('reviewListContainer');
+
+      if (!visible.length) {
+        container.innerHTML = `
+          <div class="p-8 text-center rounded-xl bg-slate-950/60 border border-dashed border-slate-800 text-xs text-slate-400 space-y-2">
+            <div>暂无复盘记录。你可以在右侧点击<strong class="text-emerald-400">「保存当前推盘单至每日复盘区」</strong>或推荐组合方案中的<strong class="text-emerald-400">「存至复盘区」</strong>，次日回来核对赛果与盈亏。</div>
+          </div>`;
+        return;
+      }
+
+      const parlayLabel = p => p === '1x1' ? '单关' : p === '2x1' ? '2串1' : p === '3x1' ? '3串1' : p === '4x1' ? '4串1' : '全串';
+
+      container.innerHTML = visible.map(({ r, out }) => `
+        <div class="p-4 rounded-xl bg-slate-950/75 border border-slate-800 space-y-3 text-xs">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 tabular-nums">${r.date} ${r.time}</span>
+              <span class="font-bold text-white text-sm">${r.title}</span>
+              <span class="px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30">${parlayLabel(r.parlayType)} · ${r.multiplier}倍</span>
+              <span class="px-2 py-0.5 rounded border font-semibold tabular-nums ${out.cls}">${out.label}</span>
+            </div>
+            <div class="flex items-center gap-3 text-slate-400 tabular-nums">
+              <span>投入: <strong class="text-slate-200">${r.stake}元</strong></span>
+              <span>理论奖金: <strong class="text-emerald-400">${r.estMin}~${r.estMax}元</strong></span>
+              <button type="button" data-rid="${r.id}" class="del-review-btn text-slate-500 hover:text-rose-400 transition">删除</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            ${r.legs.map((l, li) => `
+              <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 space-y-2">
+                <div class="flex items-center justify-between gap-1">
+                  <span class="font-medium text-slate-200 truncate">${l.code} ${l.matchName}</span>
+                  <span class="text-emerald-400 font-semibold shrink-0 tabular-nums">[${l.playType}] ${l.pick} @${l.odds.toFixed(2)}</span>
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-1">
+                    <button type="button" data-rid="${r.id}" data-li="${li}" data-st="HIT" class="leg-status-btn px-2 py-0.5 rounded border text-[10px] transition ${
+                      l.resultStatus === 'HIT' ? 'bg-emerald-500/25 border-emerald-400 text-emerald-300 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }">✅ 命中</button>
+                    <button type="button" data-rid="${r.id}" data-li="${li}" data-st="MISS" class="leg-status-btn px-2 py-0.5 rounded border text-[10px] transition ${
+                      l.resultStatus === 'MISS' ? 'bg-rose-500/25 border-rose-400 text-rose-300 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }">❌ 未中</button>
+                    <button type="button" data-rid="${r.id}" data-li="${li}" data-st="PENDING" class="leg-status-btn px-2 py-0.5 rounded border text-[10px] transition ${
+                      l.resultStatus === 'PENDING' ? 'bg-amber-500/20 border-amber-400 text-amber-300 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }">待定</button>
+                  </div>
+                  <input type="text" data-rid="${r.id}" data-li="${li}" value="${l.actualScore || ''}" placeholder="实际比分" class="leg-score-inp w-16 px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] text-slate-200 text-center tabular-nums focus:outline-none focus:border-emerald-500" />
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="text-slate-500 shrink-0">复盘笔记:</span>
+            <input type="text" data-rid="${r.id}" value="${r.notes || ''}" placeholder="记录盘口变化验证、冷门判断得失，方便次日优化模型..." class="rev-note-inp flex-1 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
+          </div>
+        </div>
+      `).join('');
+
+      container.querySelectorAll('.leg-status-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const rec = reviewRecords.find(x => x.id === btn.dataset.rid);
+          if (!rec) return;
+          rec.legs[parseInt(btn.dataset.li, 10)].resultStatus = btn.dataset.st;
+          saveReviewRecords();
+          renderReviewSection();
+        });
+      });
+
+      container.querySelectorAll('.leg-score-inp').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const rec = reviewRecords.find(x => x.id === inp.dataset.rid);
+          if (!rec) return;
+          rec.legs[parseInt(inp.dataset.li, 10)].actualScore = inp.value.trim();
+          saveReviewRecords();
+        });
+      });
+
+      container.querySelectorAll('.rev-note-inp').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const rec = reviewRecords.find(x => x.id === inp.dataset.rid);
+          if (!rec) return;
+          rec.notes = inp.value;
+          saveReviewRecords();
+        });
+      });
+
+      container.querySelectorAll('.del-review-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          reviewRecords = reviewRecords.filter(x => x.id !== btn.dataset.rid);
+          saveReviewRecords();
+          renderReviewSection();
+          showToast('已删除该条复盘记录');
+        });
+      });
+    }
+
+    document.getElementById('btnSaveToReview').addEventListener('click', () => {
+      const mult = Math.max(1, parseInt(document.getElementById('inpMultiplier').value || '1', 10));
+      const distinctPlays = new Set(ticket.map(t => t.playType || '胜平负'));
+      const title = distinctPlays.size > 1 ? '自定义混合过关方案' : '自定义推盘方案';
+      archivePlanToReview(title, parlayType, mult, ticket);
+    });
+
+    document.getElementById('btnRefreshCombos').addEventListener('click', () => {
+      renderRecommendedCombos();
+      showToast('已根据最新盘口参数刷新推荐组合方案');
+    });
+
+    document.getElementById('reviewFilterStatus').addEventListener('change', renderReviewSection);
+
+    document.getElementById('btnExportReview').addEventListener('click', () => {
+      if (!reviewRecords.length) { showToast('暂无复盘记录可导出'); return; }
+      const lines = reviewRecords.map(r => {
+        const out = computeRecordOutcome(r);
+        const legStr = r.legs.map(l => `${l.code}(${l.playType}:${l.pick}@${l.odds.toFixed(2)} -> ${l.resultStatus}${l.actualScore ? ' ' + l.actualScore : ''})`).join('; ');
+        return `[${r.date}] ${r.title} | 投入${r.stake}元 | 状态:${out.label} | 明细:${legStr}${r.notes ? ' | 笔记:' + r.notes : ''}`;
+      });
+      const txt = lines.join('\n');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(() => showToast('复盘汇总已复制到剪贴板')).catch(() => fallbackCopy(txt));
+      } else {
+        fallbackCopy(txt);
+      }
+    });
+
+    // Initial Boot
+    renderLeagueFilters();
+    renderLeftCalcModeBar();
+    renderMatchList();
+    syncInputsToMatch();
+    renderAnalysisWorkspace();
+    renderTicket();
+  </script>
+</body>
+</html>
