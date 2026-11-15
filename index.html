@@ -493,8 +493,8 @@
         homeRank: 1,
         awayRank: 4,
         handicap: -1,
-        odds0: { h: 1.67, d: 3.70, a: 3.70 },
-        oddsHc: { h: 3.21, d: 3.29, a: 1.91 },
+        odds0: { h: 1.61, d: 3.83, a: 3.88 },
+        oddsHc: { h: 2.86, d: 3.45, a: 2.00 },
         initEuro: { h: 1.87, d: 3.81, a: 3.82 },
         instEuro: { h: 1.78, d: 3.75, a: 4.10 },
         asianInit: '主让半球/一球 0.92',
@@ -523,8 +523,8 @@
         homeRank: 8,
         awayRank: 12,
         handicap: -1,
-        odds0: { h: 1.90, d: 3.55, a: 3.02 },
-        oddsHc: { h: 3.75, d: 3.75, a: 1.65 },
+        odds0: { h: 1.86, d: 3.55, a: 3.12 },
+        oddsHc: { h: 3.56, d: 3.65, a: 1.71 },
         initEuro: { h: 2.15, d: 3.62, a: 3.11 },
         instEuro: { h: 2.08, d: 3.55, a: 3.25 },
         asianInit: '主让平半 0.88',
@@ -613,8 +613,8 @@
         homeRank: 126,
         awayRank: 78,
         handicap: 1,
-        odds0: { h: 2.91, d: 3.22, a: 2.06 },
-        oddsHc: { h: 1.57, d: 3.60, a: 4.45 },
+        odds0: { h: 2.85, d: 3.18, a: 2.11 },
+        oddsHc: { h: 1.54, d: 3.65, a: 4.65 },
         initEuro: { h: 3.33, d: 3.01, a: 2.27 },
         instEuro: { h: 3.15, d: 3.18, a: 2.22 },
         asianInit: '客让平半 0.92',
@@ -643,8 +643,8 @@
         homeRank: 144,
         awayRank: 108,
         handicap: 1,
-        odds0: { h: 2.95, d: 3.02, a: 2.13 },
-        oddsHc: { h: 1.53, d: 3.50, a: 5.00 },
+        odds0: { h: 2.72, d: 3.00, a: 2.28 },
+        oddsHc: { h: 1.46, d: 3.75, a: 5.35 },
         initEuro: { h: 3.14, d: 3.09, a: 2.33 },
         instEuro: { h: 3.18, d: 3.05, a: 2.28 },
         asianInit: '客让平半 0.96',
@@ -829,6 +829,7 @@
     let expandedMatchIds = { sun010: true };
 
     let reviewRecords = [];
+    let matchResults = {}; // { [matchId]: { homeGoals, awayGoals, htHome, htAway } }
 
     // Load saved ticket & review records safely
     try {
@@ -836,12 +837,73 @@
       if (saved) ticket = JSON.parse(saved);
       const savedRev = localStorage.getItem('jc_sim_reviews_v1');
       if (savedRev) reviewRecords = JSON.parse(savedRev);
+      const savedRes = localStorage.getItem('jc_sim_results_v1');
+      if (savedRes) matchResults = JSON.parse(savedRes);
     } catch (e) {}
 
     function saveReviewRecords() {
       try {
         localStorage.setItem('jc_sim_reviews_v1', JSON.stringify(reviewRecords));
       } catch (e) {}
+    }
+
+    function saveMatchResults() {
+      try {
+        localStorage.setItem('jc_sim_results_v1', JSON.stringify(matchResults));
+      } catch (e) {}
+    }
+
+    function getMatchLiveStatus(m) {
+      const res = matchResults[m.id];
+      if (res && res.homeGoals !== '' && res.awayGoals !== '') {
+        return {
+          text: `已完场 ${res.homeGoals}:${res.awayGoals}`,
+          cls: 'text-emerald-400 font-bold',
+          finished: true,
+          scoreStr: `${res.homeGoals}:${res.awayGoals}`
+        };
+      }
+      const [hh, mm] = (m.kickoff || '00:00').split(':').map(Number);
+      const now = new Date();
+      // Matches between 00:00 and 06:00 belong to next morning (2026-11-16) relative to 2026-11-15 issue
+      const kickoffDate = new Date(2026, 10, hh < 11 ? 16 : 15, hh, mm, 0);
+      const diffMin = (now - kickoffDate) / 60000;
+      if (diffMin >= 115) {
+        return { text: '已结束 · 待录赛果', cls: 'text-rose-400 font-medium', finished: true, scoreStr: '' };
+      } else if (diffMin >= 0) {
+        return { text: `进行中 (${Math.min(90, Math.round(diffMin))}')`, cls: 'text-amber-400 font-medium', finished: false, scoreStr: '' };
+      }
+      return { text: '未开赛', cls: 'text-emerald-400', finished: false, scoreStr: '' };
+    }
+
+    function settleReviewLegsFromScore(m, hg, ag) {
+      const scoreColon = `${hg}:${ag}`;
+      const scoreDash = `${hg}-${ag}`;
+      const tg = Math.min(7, hg + ag);
+      const tgLabel = tg === 7 ? '7+球' : `${tg}球`;
+      const spfRes = hg > ag ? '主胜' : hg === ag ? '平局' : '客胜';
+      const hcDiff = hg + m.handicap - ag;
+      const hcText = m.handicap > 0 ? `+${m.handicap}` : `${m.handicap}`;
+      const hcRes = hcDiff > 0 ? `让(${hcText})胜` : hcDiff === 0 ? `让(${hcText})平` : `让(${hcText})负`;
+
+      let updatedCount = 0;
+      reviewRecords.forEach(rec => {
+        rec.legs.forEach(l => {
+          if (l.matchId === m.id) {
+            l.actualScore = scoreDash;
+            if (l.playType === '胜平负') l.resultStatus = l.pick === spfRes ? 'HIT' : 'MISS';
+            else if (l.playType === '让球') l.resultStatus = l.pick === hcRes ? 'HIT' : 'MISS';
+            else if (l.playType === '总进球') l.resultStatus = l.pick === tgLabel ? 'HIT' : 'MISS';
+            else if (l.playType === '比分') l.resultStatus = (l.pick === scoreColon || l.pick === scoreDash) ? 'HIT' : 'MISS';
+            updatedCount++;
+          }
+        });
+      });
+      if (updatedCount > 0) {
+        saveReviewRecords();
+        renderReviewSection();
+      }
+      return updatedCount;
     }
 
     function saveTicket() {
@@ -1242,7 +1304,7 @@
                   <span class="font-semibold text-slate-200">${m.code}</span>
                   <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">${m.league}</span>
                 </div>
-                <span class="${m.status.includes('未开赛') ? 'text-emerald-400' : 'text-amber-400'} tabular-nums">${m.kickoff}</span>
+                <span class="${getMatchLiveStatus(m).cls} tabular-nums">${m.kickoff} · ${getMatchLiveStatus(m).text}</span>
               </div>
               <div class="flex items-center justify-between gap-2 text-xs font-semibold text-white">
                 <span class="truncate">${m.home} <span class="text-[10px] font-normal text-slate-500">[${m.homeRank}]</span></span>
@@ -1394,8 +1456,9 @@
             <span class="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/30">${m.code}</span>
             <span class="text-slate-300 font-medium">${m.league} · ${m.group}</span>
           </div>
-          <div class="text-xs text-slate-400 tabular-nums">
-            截期 ${m.cutoff} · 开赛 <strong class="text-white">${m.kickoff}</strong> · <span class="text-amber-400">${m.status}</span>
+          <div class="text-xs text-slate-400 tabular-nums flex items-center gap-2 flex-wrap">
+            <span>截期 ${m.cutoff} · 开赛 <strong class="text-white">${m.kickoff}</strong></span>
+            <span class="${getMatchLiveStatus(m).cls}">${getMatchLiveStatus(m).text}</span>
           </div>
         </div>
         <div class="grid grid-cols-3 items-center gap-2 text-center py-2">
@@ -1412,7 +1475,36 @@
             <div class="text-xs text-slate-400 mt-0.5">客队 · 排名 #${m.awayRank}</div>
           </div>
         </div>
+        <div class="mt-3 pt-3 border-t border-slate-800/70 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span class="text-slate-400">已完场赛果同步（录入后自动更新状态并结算复盘区）：</span>
+          <div class="flex items-center gap-1.5">
+            <input id="inpScoreH" type="number" min="0" max="20" placeholder="主" value="${matchResults[m.id]?.homeGoals ?? ''}" class="w-12 px-2 py-1 rounded-lg bg-slate-950 border border-slate-700 text-center text-white tabular-nums" />
+            <span class="text-slate-500 font-bold">:</span>
+            <input id="inpScoreA" type="number" min="0" max="20" placeholder="客" value="${matchResults[m.id]?.awayGoals ?? ''}" class="w-12 px-2 py-1 rounded-lg bg-slate-950 border border-slate-700 text-center text-white tabular-nums" />
+            <button id="btnSaveMatchScore" type="button" class="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium transition">保存赛果</button>
+          </div>
+        </div>
       `;
+      document.getElementById('btnSaveMatchScore').addEventListener('click', () => {
+        const hv = document.getElementById('inpScoreH').value;
+        const av = document.getElementById('inpScoreA').value;
+        if (hv === '' || av === '') {
+          delete matchResults[m.id];
+          saveMatchResults();
+          renderMatchList();
+          renderAnalysisWorkspace();
+          showToast('已清除该场赛果');
+          return;
+        }
+        const hg = Math.max(0, parseInt(hv, 10));
+        const ag = Math.max(0, parseInt(av, 10));
+        matchResults[m.id] = { homeGoals: hg, awayGoals: ag };
+        saveMatchResults();
+        const cnt = settleReviewLegsFromScore(m, hg, ag);
+        renderMatchList();
+        renderAnalysisWorkspace();
+        showToast(cnt > 0 ? `已保存 ${m.home} ${hg}:${ag} ${m.away}，并自动核对 ${cnt} 条复盘记录` : `已保存完场比分 ${hg}:${ag}`);
+      });
 
       // 2. Fundamentals
       document.getElementById('panelFundamentals').innerHTML = `
@@ -2069,7 +2161,7 @@
     // Recommended Combination Plans (右侧推荐组合方案)
     // =========================================================================
     function buildRecommendedCombos() {
-      const upcoming = matches.filter(m => m.status.includes('未开赛') && m.handicap > -3);
+      const upcoming = matches.filter(m => !getMatchLiveStatus(m).finished && m.handicap > -3);
       const pool = upcoming.length >= 3 ? upcoming : matches;
       const analyzed = pool.map(m => ({ m, a: computeAnalysis(m) }));
 
