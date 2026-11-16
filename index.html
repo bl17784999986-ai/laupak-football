@@ -59,9 +59,13 @@
             </span>
           </div>
           <p class="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
-            <span>期次: <strong class="text-slate-200">2026-11-15 星期日</strong></span>
+            <button id="btnOpenCalendar" type="button" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 transition">
+              <span>📅</span>
+              <span id="activeIssueLabel" class="font-semibold">2026-11-16 星期一</span>
+              <span class="text-[10px] text-sky-400">切换日历 ▾</span>
+            </button>
             <span class="text-slate-600">•</span>
-            <span id="syncStatusText" class="text-emerald-400/90">已同步足彩网实时对阵 (11场)</span>
+            <span id="syncStatusText" class="text-emerald-400/90">已同步 2026-11-16 竞彩对阵 (8场)</span>
             <span class="text-slate-600 hidden sm:inline">•</span>
             <span id="liveClock" class="hidden sm:inline tabular-nums text-slate-400"></span>
           </p>
@@ -90,7 +94,7 @@
     <div class="max-w-[1600px] mx-auto px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
       <div class="flex items-center gap-2 flex-wrap">
         <span class="text-slate-500">同步数据源:</span>
-        <a href="https://cp.zgzcw.com/lottery/jchtplayvsForJsp.action?lotteryId=47&type=jcmini" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 text-sky-400 border border-slate-700/70 transition">
+        <a href="https://cp.zgzcw.com/lottery/jchtplayvsForJsp.action?lotteryId=47" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 text-sky-400 border border-slate-700/70 transition">
           足彩网竞彩对阵 ↗
         </a>
         <a href="https://live.nowscore.com/2in1.aspx" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 text-amber-400 border border-slate-700/70 transition">
@@ -102,11 +106,14 @@
         <a href="https://m.sporttery.cn/mjc/jsq/zqspf/" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 text-emerald-400 border border-slate-700/70 transition">
           竞彩网计算器 ↗
         </a>
-        <a href="https://m.sporttery.cn/mjc/zqsj/?tab=result" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 text-rose-400 border border-slate-700/70 transition">
-          竞彩赛果开奖 ↗
+        <a href="https://m.sporttery.cn/mjc/zqsj/?tab=concern" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 text-rose-400 border border-slate-700/70 transition">
+          竞彩网关注/赛果 ↗
         </a>
         <a href="https://m.leisu.com/live" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 text-teal-400 border border-slate-700/70 transition">
           雷速即时比分 ↗
+        </a>
+        <a href="https://chinjiaqing.github.io/jc-daily-report/" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 text-fuchsia-400 border border-slate-700/70 transition">
+          信号雷达 RADAR ↗
         </a>
       </div>
       <div class="text-[11px] text-slate-500">
@@ -484,6 +491,49 @@
     </div>
   </div>
 
+  <!-- Schedule Calendar Modal -->
+  <div id="calendarModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <span>📅</span>
+            <span>竞彩赛程日历与期次切换</span>
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">查看历史已完场赛果、今日即时开盘或明日预开赛事（支持为任意日期导入新开盘数据）</p>
+        </div>
+        <button id="btnCloseCalendar" type="button" class="text-slate-400 hover:text-white text-lg">✕</button>
+      </div>
+
+      <!-- Month Navigation -->
+      <div class="flex items-center justify-between px-2">
+        <button id="btnCalPrevMonth" type="button" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold transition">&lt;</button>
+        <div id="calMonthTitle" class="text-sm font-bold text-white tabular-nums">2026 年 11 月</div>
+        <button id="btnCalNextMonth" type="button" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold transition">&gt;</button>
+      </div>
+
+      <!-- Weekday Headers -->
+      <div class="grid grid-cols-7 gap-1.5 text-center text-[11px] font-medium text-slate-400">
+        <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div><div>日</div>
+      </div>
+
+      <!-- Calendar Days Grid -->
+      <div id="calDaysGrid" class="grid grid-cols-7 gap-1.5">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Legend -->
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800 text-[11px] text-slate-400">
+        <div class="flex items-center gap-3 flex-wrap">
+          <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>有开盘/已同步赛事</span>
+          <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-sky-400"></span>今日 (2026-11-16)</span>
+          <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-600"></span>暂无开盘</span>
+        </div>
+        <button id="btnCalGoToday" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 font-medium transition">跳转到今日 (11-16)</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification -->
   <div id="toast" class="fixed bottom-5 right-5 z-50 hidden px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white shadow-xl transition-all"></div>
 
@@ -827,10 +877,323 @@
     // =========================================================================
     // Application State
     // =========================================================================
-    let matches = JSON.parse(JSON.stringify(BASE_MATCHES));
+    const MONDAY_MATCHES = [
+      {
+        id: 'mon001',
+        code: '周一 001',
+        league: '欧国联',
+        group: 'C级第3组第6轮',
+        kickoff: '23:00',
+        cutoff: '22:40',
+        status: '未开赛',
+        home: '法罗群岛',
+        away: '摩尔多瓦',
+        homeRank: 124,
+        awayRank: 156,
+        handicap: -1,
+        odds0: { h: 2.15, d: 3.10, a: 3.15 },
+        oddsHc: { h: 4.35, d: 3.55, a: 1.62 },
+        initEuro: { h: 2.20, d: 3.15, a: 3.25 },
+        instEuro: { h: 2.18, d: 3.12, a: 3.30 },
+        asianInit: '主让平半 0.90',
+        asianInst: '主让平半 0.88',
+        homeForm: ['D', 'D', 'D', 'D', 'D', 'L'],
+        awayForm: ['W', 'L', 'W', 'D', 'L', 'L'],
+        homeStats: '欧国联前5轮0胜5平0负积5分排第3（进7球失7球），近10个主场4胜5平1负韧性极强，但连续5场平局暴露终结效率短板。',
+        awayStats: '欧国联前5轮2胜1平2负积7分排第2（进5球失9球），近10客场1胜2平7负且连续20场未能零封。',
+        homeInjuries: '右翼卫J-丹尼尔森停赛，詹恩-本杰明森预计顶替，右路攻防锐度有所折损。',
+        awayInjuries: '后卫约武停赛、巴博格洛出战存疑，防线人员不整，前锋波佩斯库（近9场4球）为反击核心。',
+        h2h: '近4次交手双方1胜2平1负平分秋色，首回合摩尔多瓦主场1-1战平法罗群岛。',
+        homeMotiv: 84,
+        awayMotiv: 82,
+        motivationNote: '法罗群岛唯有取胜才能反超摩尔多瓦抢下升级附加赛席位；摩尔多瓦打平即可出线，客队收缩守1分动机极强，平局与让负方向需重点防范。',
+        radar: {
+          source: 'jc-daily-report',
+          v5Signal: 'HOME · 弱势客队弃守',
+          v5Direction: '主不败',
+          v5Tone: 'emerald',
+          anomalies: 20,
+          avgOdds: '1.76 / 3.36 / 4.71',
+          pinnacleProb: '主55% · 客19%',
+          deltaP: '主+0.6pp / 客-0.9pp',
+          asianQ4: '韦* 0.50→0.75 (Q2 升盘升水)；澳*/36* 维持 0.75 (主升/客降)',
+          ouQ4: '大小球 2.50：36* 2→2.5 (Q2 升盘升水)，澳*/Crow 不变'
+        }
+      },
+      {
+        id: 'mon002',
+        code: '周一 002',
+        league: '欧国联',
+        group: 'C级第3组第6轮',
+        kickoff: '23:00',
+        cutoff: '22:40',
+        status: '未开赛',
+        home: '哈萨克斯坦',
+        away: '斯洛伐克',
+        homeRank: 118,
+        awayRank: 45,
+        handicap: 1,
+        odds0: { h: 4.00, d: 3.50, a: 1.85 },
+        oddsHc: { h: 1.82, d: 3.55, a: 3.45 },
+        initEuro: { h: 4.40, d: 3.60, a: 1.75 },
+        instEuro: { h: 3.95, d: 3.48, a: 1.88 },
+        asianInit: '客让半一 0.94',
+        asianInst: '客让半球 0.88',
+        homeForm: ['L', 'D', 'L', 'D', 'L', 'L'],
+        awayForm: ['D', 'W', 'W', 'D', 'W', 'W'],
+        homeStats: '前5轮0胜2平3负积2分垫底，连续7场不胜但场场既有进球也有失球，主场避免垫底抢分意愿明确。',
+        awayStats: '前5轮3胜2平0负积11分已提前锁定小组第1升级B级，各项赛事连续8场不败。',
+        homeInjuries: '18岁前锋萨特帕耶夫伤缺，但中后卫马利停赛期满回归三中卫核心位置，防线完整度回升。',
+        awayInjuries: '主帅魏斯明确大幅轮换：什克里尼亚尔、汉茨科、格雷夫、杜达、贝罗、鲁斯纳克、瓦连特等多名主力缺阵/轮休，洛博特卡等伤缺。',
+        h2h: '历史3次交手哈萨克斯坦2胜1负，首回合斯洛伐克主场2-1取胜。',
+        homeMotiv: 85,
+        awayMotiv: 52,
+        motivationNote: '典型“动机不对称+大幅轮换”格局：斯洛伐克已提前升级且抽掉大半主力远征阿斯塔纳，哈萨克斯坦主场受让(+1)抢分题材充足。',
+        radar: {
+          source: 'jc-daily-report',
+          v5Signal: '无 V5 定稿信号',
+          v5Direction: '观望 / 关注受让下盘',
+          v5Tone: 'amber',
+          anomalies: 64,
+          avgOdds: '市场 64 次异动',
+          pinnacleProb: '下盘受关注',
+          deltaP: '亚盘 Q3 同向降盘',
+          asianQ4: '韦* -0.75→-0.50、澳* -1.00→-0.50 均为 Q3 降盘升水（利好受让方下盘）；36* Q4 降盘降水',
+          ouQ4: '大小球 2.75：Crow 2.25→2.75 (Q2 升盘升水)'
+        }
+      },
+      {
+        id: 'mon003',
+        code: '周一 003',
+        league: '欧国联',
+        group: 'C级第4组第6轮',
+        kickoff: '01:00',
+        cutoff: '23:50',
+        status: '未开赛',
+        home: '爱沙尼亚',
+        away: '保加利亚',
+        homeRank: 121,
+        awayRank: 84,
+        handicap: -1,
+        odds0: { h: 1.90, d: 3.05, a: 3.50 },
+        oddsHc: { h: 3.75, d: 3.45, a: 1.75 },
+        initEuro: { h: 2.05, d: 3.15, a: 3.40 },
+        instEuro: { h: 1.92, d: 3.08, a: 3.60 },
+        asianInit: '主让平半 0.85',
+        asianInst: '主让半球 0.94',
+        homeForm: ['W', 'W', 'D', 'W', 'L', 'D'],
+        awayForm: ['L', 'L', 'D', 'L', 'W', 'L'],
+        homeStats: 'C4组5战积9分（净胜球+2），上轮客场1-0击败卢森堡，整体防守稳健度明显提升。',
+        awayStats: 'C4组5战仅积4分（净胜球-7），上轮主场0-5惨败于冰岛，士气与防线均处于低谷。',
+        homeInjuries: '主力框架相对齐整，主场具备持续压迫能力。',
+        awayInjuries: '连续大比分失利后阵容心态承压。',
+        h2h: '近期交锋爱沙尼亚主场不落下风，且当前积分与状态占优。',
+        homeMotiv: 80,
+        awayMotiv: 58,
+        motivationNote: '爱沙尼亚主胜从2.05下调至1.90且亚盘升至半球，保加利亚上轮0-5溃败后客场反弹阻力较大，主胜与让平方向受关注度高。',
+        radar: {
+          source: 'jc-daily-report',
+          v5Signal: 'HOME · 弱势客队弃守',
+          v5Direction: '主不败',
+          v5Tone: 'emerald',
+          anomalies: 22,
+          avgOdds: '2.08 / 3.08 / 3.66',
+          pinnacleProb: '主46% · 客25%',
+          deltaP: '主+2.3pp / 客-2.0pp',
+          asianQ4: '澳*、36* 维持 0.25 盘口不变（主水降/客水升），主胜位移 -0.10',
+          ouQ4: '大小球 2.25：Crow 1.75→2.25 (Q2 升盘升水)，36* 维持 2.5'
+        }
+      },
+      {
+        id: 'mon004',
+        code: '周一 004',
+        league: '欧国联',
+        group: 'C级第4组第6轮',
+        kickoff: '01:00',
+        cutoff: '23:50',
+        status: '未开赛',
+        home: '冰岛',
+        away: '卢森堡',
+        homeRank: 70,
+        awayRank: 89,
+        handicap: -1,
+        odds0: { h: 1.48, d: 3.85, a: 5.20 },
+        oddsHc: { h: 2.45, d: 3.35, a: 2.30 },
+        initEuro: { h: 1.58, d: 3.90, a: 5.50 },
+        instEuro: { h: 1.50, d: 3.95, a: 5.80 },
+        asianInit: '主让一球 0.90',
+        asianInst: '主让一球 0.84',
+        homeForm: ['W', 'W', 'D', 'W', 'D', 'L'],
+        awayForm: ['L', 'L', 'D', 'L', 'L', 'L'],
+        homeStats: 'C4组前5轮积11分领跑榜首，近6场3胜2平1负（进12球失4球），上轮客场5-0大胜保加利亚火力全开。',
+        awayStats: 'C4组积3分排第4，上轮主场0-1负于爱沙尼亚，客场进攻端破局能力偏弱。',
+        homeInjuries: '主力框架健康，主场收官战进攻端状态正盛。',
+        awayInjuries: '整体实力与板凳深度有限。',
+        h2h: '首回合冰岛客场3-0完胜卢森堡，近三次交锋冰岛2胜1平保持零封。',
+        homeMotiv: 82,
+        awayMotiv: 60,
+        motivationNote: '冰岛主场锁定头名收官，近态与实力压制明显，主胜方向支撑充足，重点关注一球至两球净胜。',
+        radar: {
+          source: 'jc-daily-report',
+          v5Signal: 'HOME · 弱势客队弃守',
+          v5Direction: '主不败',
+          v5Tone: 'emerald',
+          anomalies: 52,
+          avgOdds: '1.24 / 5.51 / 10.73',
+          pinnacleProb: '主76% · 客9%',
+          deltaP: '主+4.0pp / 客-2.2pp',
+          asianQ4: '澳*、36* 由 1.50 升至 1.75 (Q2 升盘升水)，主胜位移 -0.06',
+          ouQ4: '大小球 2.75：澳*/Crow/36* 盘口不变、大球降水（资金流入大球）'
+        }
+      },
+      {
+        id: 'mon005',
+        code: '周一 005',
+        league: '欧国联',
+        group: 'B级第1组第6轮',
+        kickoff: '03:45',
+        cutoff: '23:50',
+        status: '未开赛',
+        home: '瑞士',
+        away: '苏格兰',
+        homeRank: 17,
+        awayRank: 48,
+        handicap: -1,
+        odds0: { h: 1.52, d: 3.80, a: 4.95 },
+        oddsHc: { h: 2.55, d: 3.35, a: 2.22 },
+        initEuro: { h: 1.62, d: 3.85, a: 5.10 },
+        instEuro: { h: 1.55, d: 3.88, a: 5.35 },
+        asianInit: '主让半球/一球 0.86',
+        asianInst: '主让一球 0.94',
+        homeForm: ['D', 'W', 'W', 'W', 'D', 'W'],
+        awayForm: ['W', 'L', 'L', 'W', 'D', 'L'],
+        homeStats: 'B1组前5轮积13分高居榜首，近6场4胜2平0负（进12球仅失2球，胜率67%），攻守平衡极佳。',
+        awayStats: 'B1组积7分，上轮主场2-1击败北马其顿，近6场3胜1平2负但客场面对强队抗压能力一般。',
+        homeInjuries: '中后场主力框架齐整，主场防线稳定性突出。',
+        awayInjuries: '客场作战预计以稳守反击为主。',
+        h2h: '首回合瑞士客场3-0大胜苏格兰，心理与战术克制明显。',
+        homeMotiv: 78,
+        awayMotiv: 72,
+        motivationNote: '瑞士已基本锁定小组第1升级，但主场不败金身与近期6场仅失2球的防守效率使其依然具备较高正路倾向。'
+      },
+      {
+        id: 'mon006',
+        code: '周一 006',
+        league: '欧国联',
+        group: 'A级第2组第6轮',
+        kickoff: '03:45',
+        cutoff: '23:50',
+        status: '未开赛',
+        home: '德国',
+        away: '荷兰',
+        homeRank: 10,
+        awayRank: 7,
+        handicap: -1,
+        odds0: { h: 1.82, d: 3.60, a: 3.35 },
+        oddsHc: { h: 3.35, d: 3.55, a: 1.78 },
+        initEuro: { h: 1.92, d: 3.65, a: 3.60 },
+        instEuro: { h: 1.88, d: 3.62, a: 3.70 },
+        asianInit: '主让半球 0.90',
+        asianInst: '主让半球 0.88',
+        homeForm: ['W', 'W', 'D', 'W', 'W', 'L'],
+        awayForm: ['W', 'D', 'W', 'W', 'L', 'W'],
+        homeStats: '德国上轮客场3-1击败九人塞尔维亚，维尔茨与格鲁达状态火热，主场控球与前场压迫力强。',
+        awayStats: '荷兰上轮主场7-0横扫希腊，进攻端多点开花且范戴克、德容领衔中后场，反击速度极快。',
+        homeInjuries: '阵容深度充足，主帅或根据出线形势微调前场组合。',
+        awayInjuries: '主力框架健康，客场具备极强得分能力。',
+        h2h: '欧洲宿敌对决历来节奏开放、进球率偏高，双方均具备破门能力。',
+        homeMotiv: 80,
+        awayMotiv: 80,
+        motivationNote: 'A2组强强焦点战，德国主场微幅降水但荷兰7-0大胜后拉力不俗，需高度防范双方对攻下的高进球与平局分流。'
+      },
+      {
+        id: 'mon007',
+        code: '周一 007',
+        league: '欧国联',
+        group: 'B级第1组第6轮',
+        kickoff: '03:45',
+        cutoff: '23:50',
+        status: '未开赛',
+        home: '北马其顿',
+        away: '斯洛文尼亚',
+        homeRank: 69,
+        awayRank: 55,
+        handicap: 1,
+        odds0: { h: 3.15, d: 3.05, a: 2.10 },
+        oddsHc: { h: 1.56, d: 3.55, a: 4.55 },
+        initEuro: { h: 3.25, d: 3.10, a: 2.25 },
+        instEuro: { h: 3.20, d: 3.08, a: 2.22 },
+        asianInit: '客让平半 0.94',
+        asianInst: '客让平半 0.90',
+        homeForm: ['L', 'D', 'W', 'L', 'D', 'L'],
+        awayForm: ['D', 'W', 'D', 'L', 'W', 'D'],
+        homeStats: '上轮客场1-2负于苏格兰，整体防守反击为主，主场拼抢积极但得分稳定性一般。',
+        awayStats: '上轮主场0-0逼平榜首瑞士，近6场2胜2平2负（进6球失5球），防守纪律性较强。',
+        homeInjuries: '主力框架基本可用。',
+        awayInjuries: '阵容相对齐整，客场拿分意愿明确。',
+        h2h: '两队实力接近、交锋多呈胶着低比分格局。',
+        homeMotiv: 70,
+        awayMotiv: 76,
+        motivationNote: '客让平半格局下平赔低企（3.05），斯洛文尼亚客场不败概率较高，需防范1-1、0-1等低比分赛果。'
+      },
+      {
+        id: 'mon008',
+        code: '周一 008',
+        league: '欧国联',
+        group: 'A级第2组第6轮',
+        kickoff: '03:45',
+        cutoff: '23:50',
+        status: '未开赛',
+        home: '希腊',
+        away: '塞尔维亚',
+        homeRank: 42,
+        awayRank: 33,
+        handicap: 1,
+        odds0: { h: 2.55, d: 3.15, a: 2.45 },
+        oddsHc: { h: 1.42, d: 3.90, a: 5.40 },
+        initEuro: { h: 2.65, d: 3.20, a: 2.60 },
+        instEuro: { h: 2.58, d: 3.18, a: 2.65 },
+        asianInit: '平手 0.92',
+        asianInst: '平手 0.88',
+        homeForm: ['L', 'W', 'L', 'D', 'W', 'L'],
+        awayForm: ['L', 'D', 'L', 'W', 'L', 'W'],
+        homeStats: '上轮客场0-7惨败于荷兰遭遇重创，回到主场急需稳固防线挽回颜面。',
+        awayStats: '上轮主场1-3不敌德国（比赛中吃到红牌），客场进攻效率起伏较大。',
+        homeInjuries: '后防线经历惨败后存在人员调整可能。',
+        awayInjuries: '上轮染红球员本场停赛，阵容轮换受限。',
+        h2h: '巴尔干及周边德比历来对抗激烈，胜负往往在一球之间。',
+        homeMotiv: 76,
+        awayMotiv: 72,
+        motivationNote: '两队上轮双双输球且塞尔维亚有停赛减员，平手盘下希腊主场止颓战意不低，平局与主不败具备博弈空间。'
+      }
+    ];
+
+    let activeDate = '2026-11-16';
+    let calViewYear = 2026;
+    let calViewMonth = 10; // 0-indexed: 10 = November
+    let issuesByDate = {
+      '2026-11-15': JSON.parse(JSON.stringify(BASE_MATCHES)),
+      '2026-11-16': JSON.parse(JSON.stringify(MONDAY_MATCHES)),
+      '2026-11-17': []
+    };
+    try {
+      const savedIssues = localStorage.getItem('jc_sim_issues_v1');
+      if (savedIssues) {
+        const parsed = JSON.parse(savedIssues);
+        issuesByDate = { ...issuesByDate, ...parsed };
+      }
+    } catch (e) {}
+
+    function saveIssuesByDate() {
+      try {
+        localStorage.setItem('jc_sim_issues_v1', JSON.stringify(issuesByDate));
+      } catch (e) {}
+    }
+
+    let matches = issuesByDate[activeDate] || [];
     let activeLeague = 'ALL';
     let searchQuery = '';
-    let selectedMatchId = 'sun010';
+    let selectedMatchId = matches[0]?.id || '';
     let overrides = {}; // Per-match slider/odds overrides
     let ticket = []; // { matchId, code, matchName, pickLabel, pickType, odds, banker }
     let parlayType = '2x1';
@@ -856,6 +1219,18 @@
       sun004: {
         homeGoals: 5, awayGoals: 4, htHome: 1, htAway: 3,
         officialSp: { spf: '1.71', hc: '3.35', score: '19.00', goals: '9.50', htft: '18.00' }
+      },
+      sun008: {
+        homeGoals: 7, awayGoals: 2, htHome: 5, htAway: 1
+      },
+      sun009: {
+        homeGoals: 2, awayGoals: 1, htHome: 1, htAway: 0
+      },
+      sun010: {
+        homeGoals: 2, awayGoals: 3, htHome: 0, htAway: 1
+      },
+      sun011: {
+        homeGoals: 4, awayGoals: 1, htHome: '', htAway: ''
       }
     };
 
@@ -893,8 +1268,8 @@
       }
       const [hh, mm] = (m.kickoff || '00:00').split(':').map(Number);
       const now = new Date();
-      // Matches between 00:00 and 06:00 belong to next morning (2026-11-16) relative to 2026-11-15 issue
-      const kickoffDate = new Date(2026, 10, hh < 11 ? 16 : 15, hh, mm, 0);
+      const [ay, am, ad] = activeDate.split('-').map(Number);
+      const kickoffDate = new Date(ay, am - 1, hh < 11 ? ad + 1 : ad, hh, mm, 0);
       const diffMin = (now - kickoffDate) / 60000;
       if (diffMin >= 115) {
         return { text: '已结束 · 待录赛果', cls: 'text-rose-400 font-medium', finished: true, scoreStr: '' };
@@ -1006,6 +1381,36 @@
         instA: ov.instA ?? m.odds0.a,
         homeMotiv: ov.homeMotiv ?? m.homeMotiv,
         awayMotiv: ov.awayMotiv ?? m.awayMotiv,
+      };
+    }
+
+    function getRadarSignal(m, a) {
+      if (m.radar) return m.radar;
+      const dpH = +(a.instImp.pH - a.initImp.pH).toFixed(1);
+      const dpA = +(a.instImp.pA - a.initImp.pA).toFixed(1);
+      let v5Signal = '本地盘口均衡推算';
+      let v5Direction = a.probH >= a.probA ? '主不败倾向' : '客不败倾向';
+      let v5Tone = 'slate';
+      if (dpH >= 2.0 && a.p.instA >= 2.5) {
+        v5Signal = '模拟 HOME · 客胜抬水';
+        v5Direction = '主不败';
+        v5Tone = 'emerald';
+      } else if (dpA >= 2.0 && a.p.instH >= 2.5) {
+        v5Signal = '模拟 GLOBAL · 主胜抬水';
+        v5Direction = '客不败';
+        v5Tone = 'sky';
+      }
+      return {
+        source: 'local',
+        v5Signal,
+        v5Direction,
+        v5Tone,
+        anomalies: '--',
+        avgOdds: `${a.p.instH.toFixed(2)} / ${a.p.instD.toFixed(2)} / ${a.p.instA.toFixed(2)}`,
+        pinnacleProb: `主${a.instImp.pH.toFixed(0)}% · 客${a.instImp.pA.toFixed(0)}%`,
+        deltaP: `主${dpH >= 0 ? '+' : ''}${dpH}pp / 客${dpA >= 0 ? '+' : ''}${dpA}pp`,
+        asianQ4: `${m.asianInit} → ${m.asianInst}`,
+        ouQ4: '暂未接入外部大小球流水'
       };
     }
 
@@ -1336,7 +1741,23 @@
       const container = document.getElementById('matchListContainer');
 
       if (!filtered.length) {
-        container.innerHTML = `<div class="p-6 text-center text-xs text-slate-500">暂无匹配赛事</div>`;
+        container.innerHTML = `
+          <div class="p-6 text-center text-xs text-slate-400 space-y-3">
+            <div>${matches.length === 0 ? `${activeDate} 暂无已开盘竞彩赛事` : '暂无匹配赛事'}</div>
+            ${matches.length === 0 ? `
+              <div class="flex flex-col gap-2">
+                <button type="button" id="btnEmptyImport" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition">📥 导入 ${activeDate} 新开盘赛事</button>
+                <button type="button" id="btnEmptyGo15" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition">查看 2026-11-15 完场赛果 (11场)</button>
+              </div>
+            ` : ''}
+          </div>`;
+        const bImp = document.getElementById('btnEmptyImport');
+        if (bImp) bImp.addEventListener('click', () => {
+          document.getElementById('importModal').classList.remove('hidden');
+          document.getElementById('importModal').classList.add('flex');
+        });
+        const b15 = document.getElementById('btnEmptyGo15');
+        if (b15) b15.addEventListener('click', () => switchIssueDate('2026-11-15'));
         return;
       }
 
@@ -1380,9 +1801,10 @@
             <!-- Clickable Match Header -->
             <button type="button" data-id="${m.id}" class="match-card w-full text-left p-2.5 pb-1.5">
               <div class="flex items-center justify-between text-[11px] mb-1">
-                <div class="flex items-center gap-1.5">
+                <div class="flex items-center gap-1.5 flex-wrap">
                   <span class="font-semibold text-slate-200">${m.code}</span>
                   <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">${m.league}</span>
+                  ${m.radar ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-semibold ${m.radar.v5Tone === 'emerald' ? 'bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/40' : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'}">${m.radar.v5Direction}</span>` : ''}
                 </div>
                 <span class="${getMatchLiveStatus(m).cls} tabular-nums">${m.kickoff} · ${getMatchLiveStatus(m).text}</span>
               </div>
@@ -1498,6 +1920,7 @@
 
     function syncInputsToMatch() {
       const m = matches.find(x => x.id === selectedMatchId) || matches[0];
+      if (!m) return;
       const p = getEffectiveParams(m);
       document.getElementById('inpInitH').value = p.initH.toFixed(2);
       document.getElementById('inpInitD').value = p.initD.toFixed(2);
@@ -1523,6 +1946,14 @@
 
     function renderAnalysisWorkspace() {
       const m = matches.find(x => x.id === selectedMatchId) || matches[0];
+      if (!m) {
+        document.getElementById('matchBanner').innerHTML = `<div class="py-8 text-center text-xs text-slate-400">当前日期 (${activeDate}) 暂未录入或开盘赛事，请点击左上角「切换日历」选择其他日期，或点击右上角「导入/解析网页数据」添加今日新开盘对阵。</div>`;
+        document.getElementById('panelFundamentals').innerHTML = '<div class="text-xs text-slate-500">暂无赛事基本面数据</div>';
+        document.getElementById('panelOddsAnalysis').innerHTML = '<div class="text-xs text-slate-500">暂无赔率数据</div>';
+        document.getElementById('panelUpsetWarning').innerHTML = '<div class="text-xs text-slate-500">暂无冷门预警数据</div>';
+        document.getElementById('panelFinalVerdict').innerHTML = '<div class="text-xs text-slate-500">暂无最终研判数据</div>';
+        return;
+      }
       const a = computeAnalysis(m);
       const hcText = m.handicap > 0 ? `+${m.handicap}` : `${m.handicap}`;
 
@@ -1708,6 +2139,38 @@
           </table>
         </div>
         <p class="text-xs text-slate-300 bg-slate-950/60 p-3 rounded-xl border border-slate-800/70">${a.oddsNarrative}</p>
+        ${(() => {
+          const rd = getRadarSignal(m, a);
+          const badgeCls = rd.v5Tone === 'emerald'
+            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+            : rd.v5Tone === 'amber'
+              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+              : rd.v5Tone === 'sky'
+                ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                : 'bg-slate-800 text-slate-300 border-slate-700';
+          return `
+            <div class="p-3 rounded-xl bg-fuchsia-950/20 border border-fuchsia-500/30 space-y-2 text-xs">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <span class="text-fuchsia-300 font-bold">📡 信号雷达 RADAR 参考</span>
+                  <span class="px-2 py-0.5 rounded-full border text-[10px] font-semibold ${badgeCls}">${rd.v5Signal} → ${rd.v5Direction}</span>
+                </div>
+                <span class="text-[10px] text-slate-400 tabular-nums">${rd.source === 'jc-daily-report' ? `异动 ${rd.anomalies} 次 · 均赔 ${rd.avgOdds}` : '本地盘口实时推算'}</span>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] tabular-nums">
+                <div class="p-2 rounded-lg bg-slate-950/70 border border-slate-800/80">
+                  <div class="text-slate-400">平博概率 / 去水位移 (ΔP)</div>
+                  <div class="text-slate-200 font-medium mt-0.5">${rd.pinnacleProb} ｜ ${rd.deltaP}</div>
+                </div>
+                <div class="p-2 rounded-lg bg-slate-950/70 border border-slate-800/80">
+                  <div class="text-slate-400">Q4 亚盘象限解读</div>
+                  <div class="text-slate-200 mt-0.5">${rd.asianQ4}</div>
+                </div>
+              </div>
+              <div class="text-[11px] text-slate-300"><strong class="text-fuchsia-300">大小球象限：</strong>${rd.ouQ4}</div>
+            </div>
+          `;
+        })()}
       `;
 
       renderOddsChart(a);
@@ -2133,6 +2596,7 @@
         `【${m.code} ${m.league}】${m.home} vs ${m.away} (${m.kickoff})`,
         `1. 【基本面】主队：${m.homeStats} 伤停：${m.homeInjuries} | 客队：${m.awayStats} 伤停：${m.awayInjuries}`,
         `2. 【数据面】${a.marketSignal}。${a.oddsNarrative}`,
+        `   • 信号雷达参考：${getRadarSignal(m, a).v5Signal}（${getRadarSignal(m, a).v5Direction}）｜ 亚盘象限：${getRadarSignal(m, a).asianQ4}`,
         `3. 【冷门预警】${a.upsetLevel} (${a.upsetScore}/100)。${m.motivationNote}`,
         `4. 【最终研判 - 全玩法推演】`,
         `   • 胜平负：胜 ${a.probH}% / 平 ${a.probD}% / 负 ${a.probA}% ｜ 推荐：${a.recPrimary}（防冷：${a.recSecondary}）`,
@@ -2308,6 +2772,8 @@
         motivationNote: '自定义导入场次：系统已结合导入赔率与让球盘口生成初始冷门预警评估。'
       };
       matches.unshift(newMatch);
+      issuesByDate[activeDate] = matches;
+      saveIssuesByDate();
       selectedMatchId = newMatch.id;
       closeModal();
       renderLeagueFilters();
@@ -2695,6 +3161,113 @@
       } else {
         fallbackCopy(txt);
       }
+    });
+
+    // =========================================================================
+    // Schedule Calendar & Multi-Date Issue Switching
+    // =========================================================================
+    function formatWeekdayZh(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+      return days[new Date(y, m - 1, d).getDay()];
+    }
+
+    function switchIssueDate(dateStr) {
+      activeDate = dateStr;
+      if (!issuesByDate[dateStr]) issuesByDate[dateStr] = [];
+      matches = issuesByDate[dateStr];
+      activeLeague = 'ALL';
+      selectedMatchId = matches[0]?.id || '';
+      document.getElementById('activeIssueLabel').textContent = `${dateStr} ${formatWeekdayZh(dateStr)}`;
+      document.getElementById('syncStatusText').textContent = matches.length
+        ? `已同步 ${dateStr} 竞彩对阵 (${matches.length}场)`
+        : `${dateStr} 暂未开盘 (0场)`;
+      renderLeagueFilters();
+      renderMatchList();
+      syncInputsToMatch();
+      renderAnalysisWorkspace();
+      renderRecommendedCombos();
+    }
+
+    function renderCalendarModal() {
+      document.getElementById('calMonthTitle').textContent = `${calViewYear} 年 ${calViewMonth + 1} 月`;
+      const grid = document.getElementById('calDaysGrid');
+      const firstDay = new Date(calViewYear, calViewMonth, 1).getDay(); // 0=Sun..6=Sat
+      const mondayOffset = (firstDay + 6) % 7;
+      const daysInMonth = new Date(calViewYear, calViewMonth + 1, 0).getDate();
+      const todayStr = '2026-11-16';
+
+      let cells = [];
+      for (let i = 0; i < mondayOffset; i++) {
+        cells.push(`<div></div>`);
+      }
+      for (let d = 1; d <= daysInMonth; d++) {
+        const mm = String(calViewMonth + 1).padStart(2, '0');
+        const dd = String(d).padStart(2, '0');
+        const dStr = `${calViewYear}-${mm}-${dd}`;
+        const list = issuesByDate[dStr] || [];
+        const isSel = dStr === activeDate;
+        const isToday = dStr === todayStr;
+
+        let badge = '';
+        if (list.length > 0) {
+          badge = `<span class="text-[9px] text-emerald-400 font-medium">${list.length}场</span>`;
+        } else if (isToday) {
+          badge = `<span class="text-[9px] text-sky-300">今日</span>`;
+        } else if (dStr > todayStr) {
+          badge = `<span class="text-[9px] text-slate-500">待开</span>`;
+        }
+
+        cells.push(`
+          <button type="button" data-date="${dStr}" class="cal-day-btn p-2 rounded-xl border text-center transition flex flex-col items-center justify-center gap-0.5 ${
+            isSel
+              ? 'bg-emerald-600/30 border-emerald-400 text-white font-bold shadow-sm'
+              : isToday
+                ? 'bg-sky-950/50 border-sky-500/60 text-sky-200 hover:bg-sky-900/50'
+                : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:border-slate-600 hover:bg-slate-800/70'
+          }">
+            <span class="text-xs tabular-nums">${d}</span>
+            ${badge}
+          </button>
+        `);
+      }
+      grid.innerHTML = cells.join('');
+      grid.querySelectorAll('.cal-day-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          switchIssueDate(btn.dataset.date);
+          closeCalModal();
+          showToast(`已切换至 ${btn.dataset.date} 期次`);
+        });
+      });
+    }
+
+    const calModal = document.getElementById('calendarModal');
+    const closeCalModal = () => {
+      calModal.classList.add('hidden');
+      calModal.classList.remove('flex');
+    };
+    document.getElementById('btnOpenCalendar').addEventListener('click', () => {
+      renderCalendarModal();
+      calModal.classList.remove('hidden');
+      calModal.classList.add('flex');
+    });
+    document.getElementById('btnCloseCalendar').addEventListener('click', closeCalModal);
+    document.getElementById('btnCalPrevMonth').addEventListener('click', () => {
+      calViewMonth--;
+      if (calViewMonth < 0) { calViewMonth = 11; calViewYear--; }
+      renderCalendarModal();
+    });
+    document.getElementById('btnCalNextMonth').addEventListener('click', () => {
+      calViewMonth++;
+      if (calViewMonth > 11) { calViewMonth = 0; calViewYear++; }
+      renderCalendarModal();
+    });
+    document.getElementById('btnCalGoToday').addEventListener('click', () => {
+      calViewYear = 2026;
+      calViewMonth = 10;
+      switchIssueDate('2026-11-16');
+      closeCalModal();
+      showToast('已切换至今日 (2026-11-16)');
     });
 
     // Initial Boot
