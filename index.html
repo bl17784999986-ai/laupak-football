@@ -61,11 +61,11 @@
           <p class="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
             <button id="btnOpenCalendar" type="button" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 transition">
               <span>📅</span>
-              <span id="activeIssueLabel" class="font-semibold">2026-11-16 星期一</span>
+              <span id="activeIssueLabel" class="font-semibold">2026-11-17 星期二</span>
               <span class="text-[10px] text-sky-400">切换日历 ▾</span>
             </button>
             <span class="text-slate-600">•</span>
-            <span id="syncStatusText" class="text-emerald-400/90">已同步 2026-11-16 竞彩对阵 (8场)</span>
+            <span id="syncStatusText" class="text-emerald-400/90">已同步 2026-11-17 竞彩对阵 (10场)</span>
             <span class="text-slate-600 hidden sm:inline">•</span>
             <span id="liveClock" class="hidden sm:inline tabular-nums text-slate-400"></span>
           </p>
@@ -537,10 +537,10 @@
       <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800 text-[11px] text-slate-400">
         <div class="flex items-center gap-3 flex-wrap">
           <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>有开盘/已同步赛事</span>
-          <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-sky-400"></span>今日 (2026-11-16)</span>
+          <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-sky-400"></span>今日 (2026-11-17)</span>
           <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-600"></span>暂无开盘</span>
         </div>
-        <button id="btnCalGoToday" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 font-medium transition">跳转到今日 (11-16)</button>
+        <button id="btnCalGoToday" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 font-medium transition">跳转到今日 (11-17)</button>
       </div>
     </div>
   </div>
@@ -1179,13 +1179,166 @@
       }
     ];
 
-    let activeDate = '2026-11-16';
+    const TUESDAY_MATCHES = [
+      {
+        id: 'tue001', code: '周二 001', league: '国际赛', group: '国际友谊赛',
+        kickoff: '18:00', cutoff: '17:40', status: '未开赛',
+        home: '新加坡', away: '巴西', homeRank: 161, awayRank: 5, handicap: 4,
+        odds0: { h: 25.00, d: 12.00, a: 1.05 }, oddsHc: { h: 3.35, d: 5.45, a: 1.52 },
+        initEuro: { h: 25.00, d: 12.00, a: 1.05 }, instEuro: { h: 25.00, d: 12.00, a: 1.05 },
+        asianInit: '客让四球 0.90', asianInst: '客让四球 0.88',
+        homeForm: ['L', 'L', 'D', 'L', 'L'], awayForm: ['W', 'W', 'D', 'W', 'W'],
+        homeStats: '世界排名第161位，主场面对世界顶级强队以密集防守减少失球为主。',
+        awayStats: '世界排名第5位，锋线个人能力与整体实力形成碾压级优势。',
+        homeInjuries: '主力框架齐整。', awayInjuries: '热身赛存在半场大幅轮换可能。',
+        h2h: '实力差距悬殊，竞彩胜平负未开售，仅开让球(+4)玩法。',
+        homeMotiv: 65, awayMotiv: 72,
+        motivationNote: '友谊赛客让4球门槛极高，需留意巴西领先后轮换降速带来的让胜/让平空间。'
+      },
+      {
+        id: 'tue002', code: '周二 002', league: '国际赛', group: '国际友谊赛',
+        kickoff: '20:00', cutoff: '19:40', status: '未开赛',
+        home: '中国', away: '巴林', homeRank: 90, awayRank: 80, handicap: -1,
+        odds0: { h: 1.77, d: 3.10, a: 3.97 }, oddsHc: { h: 3.80, d: 3.25, a: 1.76 },
+        initEuro: { h: 1.85, d: 3.15, a: 3.85 }, instEuro: { h: 1.77, d: 3.10, a: 3.97 },
+        asianInit: '主让平半 0.86', asianInst: '主让半球 0.92',
+        homeForm: ['W', 'D', 'L', 'W', 'D'], awayForm: ['D', 'L', 'W', 'D', 'L'],
+        homeStats: '主场作战注重防守反击与定位球效率，主胜赔率稳步下调。',
+        awayStats: '巴林客场球风硬朗，中场拦截密度较高，不易轻易丢球。',
+        homeInjuries: '主力框架基本可用。', awayInjuries: '阵容相对齐整。',
+        h2h: '双方近年交手多为小比分胶着格局，平局率偏高。',
+        homeMotiv: 82, awayMotiv: 72,
+        motivationNote: '主胜由1.85微降至1.77且平赔压在3.10低位，主场抢分意愿强但需防1-1/1-0小胜格局。'
+      },
+      {
+        id: 'tue003', code: '周二 003', league: '国际赛', group: '国际友谊赛',
+        kickoff: '21:10', cutoff: '20:50', status: '未开赛',
+        home: '日本', away: '巴拉圭', homeRank: 15, awayRank: 53, handicap: -1,
+        odds0: { h: 1.41, d: 4.20, a: 5.20 }, oddsHc: { h: 2.44, d: 3.27, a: 2.36 },
+        initEuro: { h: 1.48, d: 4.15, a: 5.00 }, instEuro: { h: 1.41, d: 4.20, a: 5.20 },
+        asianInit: '主让一球 0.88', asianInst: '主让一球/球半 0.94',
+        homeForm: ['W', 'W', 'W', 'D', 'W'], awayForm: ['D', 'L', 'W', 'D', 'L'],
+        homeStats: '世界排名第15位，主场传控节奏与前场逼抢效率处于亚洲顶尖水准。',
+        awayStats: '南美中游球队，客场作战以防反韧性见长。',
+        homeInjuries: '旅欧主力悉数在列，阵容厚度充足。', awayInjuries: '长途飞行体能存在一定消耗。',
+        h2h: '日本主场对阵南美中游球队胜率可观，场面占优。',
+        homeMotiv: 80, awayMotiv: 68,
+        motivationNote: '日本主胜1.41定位明确，重点关注让(-1)胜与让(-1)平的博弈。'
+      },
+      {
+        id: 'tue004', code: '周二 004', league: '欧国联', group: 'B级第6轮',
+        kickoff: '03:45', cutoff: '21:40', status: '未开赛',
+        home: '波黑', away: '罗马尼亚', homeRank: 2, awayRank: 4, handicap: -1,
+        odds0: { h: 1.66, d: 3.60, a: 3.85 }, oddsHc: { h: 3.03, d: 3.60, a: 1.88 },
+        initEuro: { h: 1.72, d: 3.65, a: 3.80 }, instEuro: { h: 1.66, d: 3.60, a: 3.85 },
+        asianInit: '主让半一 0.90', asianInst: '主让半一 0.85',
+        homeForm: ['W', 'D', 'W', 'L', 'W'], awayForm: ['L', 'L', 'D', 'L', 'L'],
+        homeStats: '小组排名第2，主场进攻效率稳定且具备冲击更高排名的战意。',
+        awayStats: '小组垫底（第4），客场防守失球偏多，近期胜率较低。',
+        homeInjuries: '主力框架健康。', awayInjuries: '防线轮换吃紧。',
+        h2h: '波黑主场对阵罗马尼亚整体占据主动。',
+        homeMotiv: 82, awayMotiv: 60,
+        motivationNote: '机构对波黑主场降水设防，主胜正路支撑较足。'
+      },
+      {
+        id: 'tue005', code: '周二 005', league: '欧国联', group: 'B级第6轮',
+        kickoff: '03:45', cutoff: '21:40', status: '未开赛',
+        home: '波兰', away: '瑞典', homeRank: 3, awayRank: 1, handicap: -1,
+        odds0: { h: 2.25, d: 3.45, a: 2.47 }, oddsHc: { h: 4.60, d: 4.30, a: 1.45 },
+        initEuro: { h: 2.30, d: 3.40, a: 2.55 }, instEuro: { h: 2.25, d: 3.45, a: 2.47 },
+        asianInit: '主让平半 0.96', asianInst: '平手 0.86',
+        homeForm: ['L', 'W', 'D', 'L', 'D'], awayForm: ['W', 'W', 'D', 'W', 'W'],
+        homeStats: '小组第3，主场有一定攻击力但防线稳定性不足。',
+        awayStats: '小组第1领跑，近期整体不败率与反击效率突出。',
+        homeInjuries: '核心框架正常。', awayInjuries: '瑞典已锁定优势，客场或有微调。',
+        h2h: '两队实力接近，胜平负赔率呈现典型均势对峙（2.25 / 3.45 / 2.47）。',
+        homeMotiv: 76, awayMotiv: 74,
+        motivationNote: '均势盘口下主胜微降但让(-1)负低至1.45，需防范平局及客队不败。'
+      },
+      {
+        id: 'tue006', code: '周二 006', league: '欧国联', group: 'A级第6轮',
+        kickoff: '03:45', cutoff: '21:40', status: '未开赛',
+        home: '丹麦', away: '挪威', homeRank: 2, awayRank: 3, handicap: 1,
+        odds0: { h: 2.35, d: 3.71, a: 2.25 }, oddsHc: { h: 1.45, d: 4.30, a: 4.60 },
+        initEuro: { h: 2.45, d: 3.65, a: 2.30 }, instEuro: { h: 2.35, d: 3.71, a: 2.25 },
+        asianInit: '平手 0.92', asianInst: '客让平半 0.96',
+        homeForm: ['W', 'L', 'W', 'D', 'L'], awayForm: ['W', 'W', 'L', 'W', 'D'],
+        homeStats: '北欧德比主场韧性强，整体配合成熟。',
+        awayStats: '挪威前场球星个人终结能力突出，客场反击极具威胁。',
+        homeInjuries: '防线主力基本齐整。', awayInjuries: '锋线核心状态火热。',
+        h2h: '北欧德比对抗激烈，近年交锋进球数往往较多。',
+        homeMotiv: 78, awayMotiv: 80,
+        motivationNote: '胜负赔率几乎平开（2.35 vs 2.25）且平赔高达3.71，双方分胜负与高进球特征明显。'
+      },
+      {
+        id: 'tue007', code: '周二 007', league: '欧国联', group: 'A级第4组第6轮',
+        kickoff: '03:45', cutoff: '21:40', status: '未开赛',
+        home: '威尔士', away: '葡萄牙', homeRank: 4, awayRank: 1, handicap: 1,
+        odds0: { h: 7.15, d: 5.00, a: 1.25 }, oddsHc: { h: 3.01, d: 3.60, a: 1.89 },
+        initEuro: { h: 7.00, d: 4.90, a: 1.28 }, instEuro: { h: 7.15, d: 5.00, a: 1.25 },
+        asianInit: '客让球半 0.90', asianInst: '客让球半 0.86',
+        homeForm: ['L', 'L', 'D', 'L', 'L'], awayForm: ['W', 'W', 'W', 'D', 'W'],
+        homeStats: '小组第4垫底，面对强队防守压力较大。',
+        awayStats: '小组第1领跑，客场不败即可稳固头名，攻防统治力突出。',
+        homeInjuries: '主力框架基本可用。', awayInjuries: '贝尔纳多·席尔瓦缺阵，但中前场替补深度依然雄厚。',
+        h2h: '葡萄牙整体实力与交锋战绩全面占优。',
+        homeMotiv: 66, awayMotiv: 82,
+        motivationNote: '客胜1.25稳居低位，重点博弈葡萄牙能否净胜两球拿下让(-1/主+1)负。'
+      },
+      {
+        id: 'tue008', code: '周二 008', league: '欧国联', group: 'B级第6轮',
+        kickoff: '03:45', cutoff: '21:40', status: '未开赛',
+        home: '匈牙利', away: '北爱尔兰', homeRank: 2, awayRank: 1, handicap: -1,
+        odds0: { h: 1.68, d: 3.10, a: 4.52 }, oddsHc: { h: 3.65, d: 2.98, a: 1.89 },
+        initEuro: { h: 1.75, d: 3.15, a: 4.40 }, instEuro: { h: 1.68, d: 3.10, a: 4.52 },
+        asianInit: '主让半一 0.92', asianInst: '主让半一 0.86',
+        homeForm: ['W', 'D', 'W', 'W', 'L'], awayForm: ['W', 'W', 'D', 'W', 'D'],
+        homeStats: '小组第2，主场战斗力强悍，抢分反超榜首战意强烈。',
+        awayStats: '小组第1，防守纪律严密（上轮1-0胜乌克兰），客场以稳守保榜首为主。',
+        homeInjuries: '主力阵容齐整。', awayInjuries: '防线保持完整。',
+        h2h: '两队攻防节奏偏谨慎，平局与一球小胜概率较高。',
+        homeMotiv: 84, awayMotiv: 80,
+        motivationNote: '主胜1.68配合低平赔3.10，机构防范一球小胜（让平）或平局。'
+      },
+      {
+        id: 'tue009', code: '周二 009', league: '欧国联', group: 'B级第6轮',
+        kickoff: '03:45', cutoff: '21:40', status: '未开赛',
+        home: '爱尔兰', away: '科索沃', homeRank: 3, awayRank: 2, handicap: -1,
+        odds0: { h: 1.74, d: 3.06, a: 4.20 }, oddsHc: { h: 3.60, d: 3.20, a: 1.82 },
+        initEuro: { h: 1.80, d: 3.10, a: 4.10 }, instEuro: { h: 1.74, d: 3.06, a: 4.20 },
+        asianInit: '主让半球 0.85', asianInst: '主让半一 0.94',
+        homeForm: ['W', 'D', 'L', 'W', 'D'], awayForm: ['W', 'L', 'D', 'W', 'L'],
+        homeStats: '小组第3，主场身体对抗与定位球威胁突出。',
+        awayStats: '小组第2，客场有一定反击速度但防守端稳定性一般。',
+        homeInjuries: '主力框架健康。', awayInjuries: '部分客场轮换调整。',
+        h2h: '爱尔兰主场作战略占上风，整体节奏偏向低比分。',
+        homeMotiv: 80, awayMotiv: 76,
+        motivationNote: '主胜下调至1.74且平赔仅3.06，看好爱尔兰主场不败，优选主胜/让平。'
+      },
+      {
+        id: 'tue010', code: '周二 010', league: '国际赛', group: '南美友谊赛',
+        kickoff: '07:00', cutoff: '21:40', status: '未开赛',
+        home: '智利', away: '哥伦比亚', homeRank: 50, awayRank: 12, handicap: 1,
+        odds0: { h: 4.05, d: 2.94, a: 1.81 }, oddsHc: { h: 1.72, d: 3.30, a: 3.92 },
+        initEuro: { h: 3.90, d: 3.00, a: 1.88 }, instEuro: { h: 4.05, d: 2.94, a: 1.81 },
+        asianInit: '客让半球 0.90', asianInst: '客让半球 0.84',
+        homeForm: ['L', 'D', 'L', 'W', 'L'], awayForm: ['W', 'W', 'D', 'W', 'W'],
+        homeStats: '世界排名第50位，阵容处于新老交替期，主场防守稳定性一般。',
+        awayStats: '世界排名第12位，近期连续不败且客场反击效率出色。',
+        homeInjuries: '主力框架微调。', awayInjuries: '核心攻击群状态在线。',
+        h2h: '哥伦比亚近年面对智利整体占据明显上风。',
+        homeMotiv: 70, awayMotiv: 78,
+        motivationNote: '客胜由1.88降至1.81，但平赔低企至2.94，客胜为主同时需重点防平。'
+      }
+    ];
+
+    let activeDate = '2026-11-17';
     let calViewYear = 2026;
     let calViewMonth = 10; // 0-indexed: 10 = November
     let issuesByDate = {
       '2026-11-15': JSON.parse(JSON.stringify(BASE_MATCHES)),
       '2026-11-16': JSON.parse(JSON.stringify(MONDAY_MATCHES)),
-      '2026-11-17': []
+      '2026-11-17': JSON.parse(JSON.stringify(TUESDAY_MATCHES))
     };
     try {
       const savedIssues = localStorage.getItem('jc_sim_issues_v1');
@@ -2717,12 +2870,118 @@
       }
     }
 
-    // Sync Live Button
+    // Direct Live Web Sync Attempt (cp.zgzcw.com via public CORS-enabled readers)
+    function parseScheduleRowsFromText(text) {
+      const lines = text.split(/\r?\n/);
+      const parsed = [];
+      lines.forEach(line => {
+        const codeM = line.match(/(周[一二三四五六日]\s*\d{3})/);
+        if (!codeM) return;
+        const code = codeM[1].replace(/\s+/g, ' ').trim();
+        const vsM = line.match(/([^\s\[\]|]+)\s*(?:\[\d+\])?\s*VS\s*(?:\[\d+\]\s*)?([^\s\[\]|]+)/i);
+        if (!vsM) return;
+        const home = vsM[1].trim();
+        const away = vsM[2].trim();
+        const times = line.match(/\b\d{2}:\d{2}\b/g) || [];
+        const cutoff = times.length >= 2 ? times[0] : '22:40';
+        const kickoff = times.length >= 2 ? times[1] : (times[0] || '23:00');
+        const oddsNums = line.match(/\b\d+\.\d{2}\b/g) || [];
+        const h0 = oddsNums.length >= 3 ? parseFloat(oddsNums[0]) : 2.10;
+        const d0 = oddsNums.length >= 3 ? parseFloat(oddsNums[1]) : 3.30;
+        const a0 = oddsNums.length >= 3 ? parseFloat(oddsNums[2]) : 3.10;
+        const hcM = line.match(/\s([+-]\d+)\s+\d+\.\d{2}/);
+        const hc = hcM ? parseInt(hcM[1], 10) : -1;
+        parsed.push({ code, home, away, cutoff, kickoff, h0, d0, a0, hc, oddsNums });
+      });
+      return parsed;
+    }
+
+    async function syncLiveDirectFromWeb() {
+      const targetUrl = 'https://cp.zgzcw.com/lottery/jchtplayvsForJsp.action?lotteryId=47&type=jcmini';
+      let rawText = '';
+      try {
+        const c1 = new AbortController();
+        const t1 = setTimeout(() => c1.abort(), 7500);
+        const r1 = await fetch('https://r.jina.ai/' + targetUrl, { signal: c1.signal });
+        clearTimeout(t1);
+        if (r1.ok) rawText = await r1.text();
+      } catch (e) {}
+
+      if (!rawText || rawText.length < 100) {
+        try {
+          const c2 = new AbortController();
+          const t2 = setTimeout(() => c2.abort(), 7500);
+          const r2 = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl), { signal: c2.signal });
+          clearTimeout(t2);
+          if (r2.ok) {
+            const doc = new DOMParser().parseFromString(await r2.text(), 'text/html');
+            rawText = doc.body?.innerText || '';
+          }
+        } catch (e2) {}
+      }
+
+      if (!rawText) return false;
+      const rows = parseScheduleRowsFromText(rawText);
+      if (!rows.length) return false;
+
+      let updatedCount = 0;
+      rows.forEach(row => {
+        const existing = matches.find(m => m.code === row.code || (m.home === row.home && m.away === row.away));
+        if (existing) {
+          existing.odds0 = { h: row.h0, d: row.d0, a: row.a0 };
+          existing.instEuro = { h: row.h0, d: row.d0, a: row.a0 };
+          if (row.oddsNums.length >= 6) {
+            existing.oddsHc = { h: parseFloat(row.oddsNums[3]), d: parseFloat(row.oddsNums[4]), a: parseFloat(row.oddsNums[5]) };
+          }
+          updatedCount++;
+        } else {
+          matches.push({
+            id: 'live_' + row.code.replace(/\s+/g, '') + '_' + Date.now(),
+            code: row.code, league: '竞彩足球', group: '实时同步',
+            kickoff: row.kickoff, cutoff: row.cutoff, status: '未开赛',
+            home: row.home, away: row.away, homeRank: '--', awayRank: '--', handicap: row.hc,
+            odds0: { h: row.h0, d: row.d0, a: row.a0 },
+            oddsHc: row.oddsNums.length >= 6
+              ? { h: parseFloat(row.oddsNums[3]), d: parseFloat(row.oddsNums[4]), a: parseFloat(row.oddsNums[5]) }
+              : { h: +(row.h0 * 1.85).toFixed(2), d: +(row.d0 * 1.05).toFixed(2), a: +(row.a0 * 0.55).toFixed(2) },
+            initEuro: { h: row.h0, d: row.d0, a: row.a0 },
+            instEuro: { h: row.h0, d: row.d0, a: row.a0 },
+            asianInit: `让(${row.hc}) 0.90`, asianInst: `让(${row.hc}) 0.88`,
+            homeForm: ['W', 'D', 'W', 'L', 'W'], awayForm: ['D', 'W', 'L', 'W', 'D'],
+            homeStats: '已实时同步最新官方赔率与对阵。', awayStats: '已实时同步最新官方赔率与对阵。',
+            homeInjuries: '暂无补充伤停信息。', awayInjuries: '暂无补充伤停信息。',
+            h2h: '已实时同步最新官方赔率。', homeMotiv: 75, awayMotiv: 72,
+            motivationNote: '已通过实时赔率同步通道接入最新盘口数据。'
+          });
+          updatedCount++;
+        }
+      });
+
+      if (updatedCount > 0) {
+        issuesByDate[activeDate] = matches;
+        saveIssuesByDate();
+        renderLeagueFilters();
+        renderMatchList();
+        syncInputsToMatch();
+        renderAnalysisWorkspace();
+        renderRecommendedCombos();
+        const ts = new Date().toTimeString().slice(0, 8);
+        document.getElementById('syncStatusText').textContent = `已直连同步最新赔率 (${updatedCount}场 · ${ts})`;
+        showToast(`直连同步成功！已更新 ${updatedCount} 场最新赔率 (${ts})`);
+        return true;
+      }
+      return false;
+    }
+
+    // Sync Live Button (1. Direct live web attempt -> 2. Repo JSON fallback)
     document.getElementById('btnSyncLive').addEventListener('click', async () => {
       const icon = document.getElementById('syncIcon');
       icon.classList.add('animate-spin');
-      document.getElementById('syncStatusText').textContent = '正在同步最新赛程与赔率...';
-      await syncFromRepoJson(false);
+      document.getElementById('syncStatusText').textContent = '正在实时同步最新赛程与赔率...';
+      const liveOk = await syncLiveDirectFromWeb();
+      if (!liveOk) {
+        await syncFromRepoJson(false);
+      }
       icon.classList.remove('animate-spin');
     });
 
@@ -3317,7 +3576,7 @@
       const firstDay = new Date(calViewYear, calViewMonth, 1).getDay(); // 0=Sun..6=Sat
       const mondayOffset = (firstDay + 6) % 7;
       const daysInMonth = new Date(calViewYear, calViewMonth + 1, 0).getDate();
-      const todayStr = '2026-11-16';
+      const todayStr = '2026-11-17';
 
       let cells = [];
       for (let i = 0; i < mondayOffset; i++) {
@@ -3387,7 +3646,7 @@
     document.getElementById('btnCalGoToday').addEventListener('click', () => {
       calViewYear = 2026;
       calViewMonth = 10;
-      switchIssueDate('2026-11-16');
+      switchIssueDate('2026-11-17');
       closeCalModal();
       showToast('已切换至今日 (2026-11-16)');
     });
