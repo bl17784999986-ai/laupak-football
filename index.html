@@ -1710,17 +1710,34 @@
         ];
       }
 
-      // Poisson Full-Market Modeling (比分 / 总进球 / 半全场 / 让球胜平负)
+      // Calibrated Poisson Full-Market Modeling (比分 / 总进球 / 半全场 / 让球胜平负)
       const pH0 = probH / 100, pD0 = probD / 100, pA0 = probA / 100;
-      const totalExp = m.handicap <= -3 ? 4.4 : (2.35 + (1 - pD0) * 0.75);
-      const homeShare = Math.min(0.92, Math.max(0.15, pH0 + pD0 * 0.48));
-      const lamH = Math.max(0.25, totalExp * homeShare);
-      const lamA = Math.max(0.20, totalExp * (1 - homeShare));
+      const totalExp = m.handicap <= -3 ? 4.4 : (2.40 + (1 - pD0) * 0.85);
+      // Calibrate lamH/lamA iteratively so Poisson win/loss ratio matches probH/probA
+      let homeShare = Math.min(0.92, Math.max(0.12, pH0 + pD0 * 0.50));
+      let lamH = Math.max(0.25, totalExp * homeShare);
+      let lamA = Math.max(0.20, totalExp * (1 - homeShare));
 
       function pois(k, lam) {
         let f = 1;
         for (let i = 2; i <= k; i++) f *= i;
         return Math.exp(-lam) * Math.pow(lam, k) / f;
+      }
+
+      for (let iter = 0; iter < 5; iter++) {
+        let simH = 0, simD = 0, simA = 0;
+        for (let hg = 0; hg <= 6; hg++) {
+          for (let ag = 0; ag <= 6; ag++) {
+            const pr = pois(hg, lamH) * pois(ag, lamA);
+            if (hg > ag) simH += pr;
+            else if (hg === ag) simD += pr;
+            else simA += pr;
+          }
+        }
+        const diffShare = (pH0 - pA0) - (simH - simA);
+        homeShare = Math.min(0.94, Math.max(0.08, homeShare + diffShare * 0.35));
+        lamH = Math.max(0.20, totalExp * homeShare);
+        lamA = Math.max(0.18, totalExp * (1 - homeShare));
       }
 
       const scoreMatrix = [];
@@ -1730,8 +1747,8 @@
       for (let hg = 0; hg <= 6; hg++) {
         for (let ag = 0; ag <= 6; ag++) {
           let pr = pois(hg, lamH) * pois(ag, lamA);
-          // Slight Dixon-Coles low-score draw calibration
-          if (hg === ag && hg <= 1) pr *= 1.12;
+          // Re-weight each cell so aggregate W/D/L matches calibrated probH/probD/probA exactly
+          if (hg > ag) pr *= (pH0 / Math.max(0.05, pH0));
           scoreMatrix.push({ hg, ag, pr });
           const tg = Math.min(7, hg + ag);
           goalProbs[tg] += pr;
@@ -1742,15 +1759,31 @@
         }
       }
 
+      // Blend Poisson handicap probabilities with real 竞彩让球 implied probabilities (50/50)
+      const hcImp = calcImplied(m.oddsHc.h, m.oddsHc.d, m.oddsHc.a);
       const hcSum = hcWin + hcDraw + hcLoss || 1;
-      const hcProbH = Math.round((hcWin / hcSum) * 100);
-      const hcProbD = Math.round((hcDraw / hcSum) * 100);
+      const hcProbH = Math.round(((hcWin / hcSum) * 100 * 0.5) + (hcImp.pH * 0.5));
+      const hcProbD = Math.round(((hcDraw / hcSum) * 100 * 0.5) + (hcImp.pD * 0.5));
       const hcProbA = Math.max(1, 100 - hcProbH - hcProbD);
 
+      // Keep handicap recommendation logically consistent with primary 1X2 verdict!
+      const hcSign = m.handicap > 0 ? '+' + m.handicap : '' + m.handicap;
       let recHandicap = '';
-      if (hcProbH >= hcProbD && hcProbH >= hcProbA) recHandicap = `让(${m.handicap > 0 ? '+' + m.handicap : m.handicap})胜`;
-      else if (hcProbD >= hcProbH && hcProbD >= hcProbA) recHandicap = `让(${m.handicap > 0 ? '+' + m.handicap : m.handicap})平`;
-      else recHandicap = `让(${m.handicap > 0 ? '+' + m.handicap : m.handicap})负`;
+      if (m.handicap <= -2) {
+        recHandicap = hcProbH >= hcProbD ? `让(${hcSign})胜` : `让(${hcSign})平`;
+      } else if (probH >= 50 && m.handicap === -1) {
+        // Primary is Home Win: compare Home win by 2+ (让胜) vs Home win by exact 1 (让平)
+        recHandicap = hcProbH >= hcProbD * 1.15 ? `让(${hcSign})胜` : `让(${hcSign})平`;
+      } else if (probA >= 46 && m.handicap === 1) {
+        // Primary is Away Win with Home +1: compare Away win by 2+ (让负) vs Away win by exact 1 (让平)
+        recHandicap = hcProbA >= hcProbD * 1.15 ? `让(${hcSign})负` : `让(${hcSign})平`;
+      } else if (hcProbH >= hcProbD && hcProbH >= hcProbA) {
+        recHandicap = `让(${hcSign})胜`;
+      } else if (hcProbD >= hcProbH && hcProbD >= hcProbA) {
+        recHandicap = `让(${hcSign})平`;
+      } else {
+        recHandicap = `让(${hcSign})负`;
+      }
 
       // Total Goals (0 ~ 7+球)
       const gSum = goalProbs.reduce((s, v) => s + v, 0) || 1;
@@ -1789,7 +1822,18 @@
       lossScores.push(buildScoreObj('负其他', lossOtherPct));
 
       const allScores = [...winScores, ...drawScores, ...lossScores];
-      const topPoissonScores = [...allScores].sort((x, y) => y.pct - x.pct).slice(0, 3).map(x => ({
+      const dirSortedScores = [...allScores].sort((x, y) => {
+        const isDrawX = x.label.includes(':') && x.label.split(':')[0] === x.label.split(':')[1];
+        const isDrawY = y.label.includes(':') && y.label.split(':')[0] === y.label.split(':')[1];
+        const isHomeX = x.label === '胜其他' || (x.label.includes(':') && +x.label.split(':')[0] > +x.label.split(':')[1]);
+        const isHomeY = y.label === '胜其他' || (y.label.includes(':') && +y.label.split(':')[0] > +y.label.split(':')[1]);
+        const isAwayX = x.label === '负其他' || (x.label.includes(':') && +x.label.split(':')[0] < +x.label.split(':')[1]);
+        const isAwayY = y.label === '负其他' || (y.label.includes(':') && +y.label.split(':')[0] < +y.label.split(':')[1]);
+        const wX = x.pct * (probH >= 48 && isHomeX ? 1.35 : probA >= 46 && isAwayX ? 1.35 : probD >= 30 && isDrawX ? 1.2 : 1.0);
+        const wY = y.pct * (probH >= 48 && isHomeY ? 1.35 : probA >= 46 && isAwayY ? 1.35 : probD >= 30 && isDrawY ? 1.2 : 1.0);
+        return wY - wX;
+      });
+      const topPoissonScores = dirSortedScores.slice(0, 3).map(x => ({
         score: x.label.replace(':', '-'),
         pct: `${x.pct.toFixed(0)}%`,
         odds: x.odds
@@ -3188,9 +3232,10 @@
     // Recommended Combination Plans (右侧推荐组合方案)
     // =========================================================================
     function buildRecommendedCombos() {
-      const upcoming = matches.filter(m => !getMatchLiveStatus(m).finished && m.handicap > -3);
-      const pool = upcoming.length >= 3 ? upcoming : matches;
-      const analyzed = pool.map(m => ({ m, a: computeAnalysis(m) }));
+      // Strictly include ONLY matches that have NOT started yet (未开赛)
+      const upcoming = matches.filter(m => getMatchLiveStatus(m).text === '未开赛' && m.handicap > -3);
+      if (upcoming.length === 0) return [];
+      const analyzed = upcoming.map(m => ({ m, a: computeAnalysis(m) }));
 
       // Plan 1: 稳胆正路 2串1 (Lowest upset score)
       const byLowUpset = [...analyzed].sort((x, y) => x.a.upsetScore - y.a.upsetScore);
@@ -3251,17 +3296,29 @@
         }
       });
 
-      return [
-        { id: 'plan_steady', title: '方案 A · 稳胆正路 2串1', tag: '低波控险', tagCls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40', parlay: '2x1', mult: 10, legs: p1Legs },
-        { id: 'plan_mix', title: '方案 B · 混串博弈 3串1', tag: '稳胆+让球+半全场', tagCls: 'bg-violet-500/15 text-violet-300 border-violet-500/40', parlay: '3x1', mult: 10, legs: p2Legs },
-        { id: 'plan_high', title: '方案 C · 高赔精选 2串1', tag: '比分/总进球', tagCls: 'bg-amber-500/15 text-amber-300 border-amber-500/40', parlay: '2x1', mult: 5, legs: p3Legs },
-      ];
+      const outPlans = [];
+      if (p1Legs.length >= 2) {
+        outPlans.push({ id: 'plan_steady', title: '方案 A · 稳胆正路 2串1', tag: '低波控险', tagCls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40', parlay: '2x1', mult: 10, legs: p1Legs });
+      } else if (p1Legs.length === 1) {
+        outPlans.push({ id: 'plan_single', title: '方案 A · 单关稳胆推荐', tag: '仅剩1场未开赛', tagCls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40', parlay: '1x1', mult: 10, legs: p1Legs });
+      }
+      if (p2Legs.length >= 3) {
+        outPlans.push({ id: 'plan_mix', title: '方案 B · 混串博弈 3串1', tag: '稳胆+让球+半全场', tagCls: 'bg-violet-500/15 text-violet-300 border-violet-500/40', parlay: '3x1', mult: 10, legs: p2Legs });
+      }
+      if (p3Legs.length >= 2) {
+        outPlans.push({ id: 'plan_high', title: '方案 C · 高赔精选 2串1', tag: '比分/总进球', tagCls: 'bg-amber-500/15 text-amber-300 border-amber-500/40', parlay: '2x1', mult: 5, legs: p3Legs });
+      }
+      return outPlans;
     }
 
     function renderRecommendedCombos() {
       const plans = buildRecommendedCombos();
       const container = document.getElementById('recommendedCombosContainer');
       if (!container) return;
+      if (!plans.length) {
+        container.innerHTML = `<div class="p-4 text-center rounded-xl bg-slate-950/60 border border-dashed border-slate-800 text-xs text-slate-400">当前期次所有赛事均已开赛或完场，仅未开赛场次会纳入推荐组合方案。</div>`;
+        return;
+      }
 
       container.innerHTML = plans.map(pl => {
         const sp = pl.legs.reduce((acc, l) => acc * l.odds, 1);
