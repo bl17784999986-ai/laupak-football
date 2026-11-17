@@ -432,6 +432,17 @@
         支持粘贴来自 <code class="text-sky-400">cp.zgzcw.com</code>、<code class="text-emerald-400">m.sporttery.cn</code>、<code class="text-teal-400">m.leisu.com/live</code> 或 <code class="text-amber-400">live.nowscore.com</code> 的赛事赔率行或完场赛果文本（如：<code class="text-slate-200">周日001 町田泽维 1:0 神户胜利</code>），可自动同步赛果比分或导入新赛事。
       </p>
       <div class="space-y-3 text-xs">
+        <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
+          <label class="block text-slate-300 font-medium">🔗 粘贴赛事 / 赛果网页链接（尝试自动抓取正文并填入下方）</label>
+          <div class="flex gap-2">
+            <input id="inpFetchUrl" type="url" placeholder="https://cp.zgzcw.com/lottery/jchtplayvsForJsp.action?lotteryId=47" class="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500" />
+            <button id="btnFetchUrl" type="button" class="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium shrink-0 transition">
+              🌐 读取链接
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-500">提示：若目标网站启用防爬或动态加载导致读取失败，可直接在原网页全选复制文本粘贴到下方，或将链接发给 Gemini 技能同步。</p>
+        </div>
+
         <div>
           <label class="block text-slate-300 mb-1">一键粘贴网页行文本 (自动识别队名、让球、胜平负赔率)</label>
           <textarea id="txtPasteRaw" rows="3" placeholder="例如：周日 010 欧国联 03:45 西班牙 [1] VS 英格兰 [4] 0 1.67 3.70 3.70 -1 3.21 3.29 1.91" class="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500"></textarea>
@@ -1357,6 +1368,7 @@
       if (updatedCount > 0) {
         saveReviewRecords();
         renderReviewSection();
+    syncFromRepoJson(true);
       }
       return updatedCount;
     }
@@ -2648,25 +2660,70 @@
       showToast('已清空模拟过关单');
     });
 
+    // Same-Origin GitHub Actions JSON Sync (./data/matches.json)
+    async function syncFromRepoJson(silent = false) {
+      try {
+        const resp = await fetch('./data/matches.json?t=' + Date.now(), { cache: 'no-store' });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        let syncedDates = 0;
+        if (data.issuesByDate && typeof data.issuesByDate === 'object') {
+          Object.keys(data.issuesByDate).forEach(d => {
+            if (Array.isArray(data.issuesByDate[d]) && data.issuesByDate[d].length > 0) {
+              issuesByDate[d] = data.issuesByDate[d];
+              syncedDates++;
+            }
+          });
+          saveIssuesByDate();
+        }
+        if (data.matchResults && typeof data.matchResults === 'object') {
+          matchResults = { ...matchResults, ...data.matchResults };
+          saveMatchResults();
+          // Auto-settle any matching review legs
+          Object.keys(matchResults).forEach(mid => {
+            const r = matchResults[mid];
+            if (r && r.homeGoals !== '' && r.awayGoals !== '') {
+              for (const d of Object.keys(issuesByDate)) {
+                const m = (issuesByDate[d] || []).find(x => x.id === mid);
+                if (m) {
+                  settleReviewLegsFromScore(m, parseInt(r.homeGoals, 10), parseInt(r.awayGoals, 10), r.htHome === '' || r.htHome === undefined ? null : parseInt(r.htHome, 10), r.htAway === '' || r.htAway === undefined ? null : parseInt(r.htAway, 10));
+                  break;
+                }
+              }
+            }
+          });
+        }
+        if (data.latestDate && issuesByDate[data.latestDate]?.length) {
+          switchIssueDate(data.latestDate);
+        } else {
+          matches = issuesByDate[activeDate] || [];
+          renderLeagueFilters();
+          renderMatchList();
+          syncInputsToMatch();
+          renderAnalysisWorkspace();
+          renderRecommendedCombos();
+        }
+        const upd = data.updatedAt || new Date().toTimeString().slice(0, 8);
+        document.getElementById('syncStatusText').textContent = `已自动同步仓库数据 (${matches.length}场 · ${upd})`;
+        if (!silent) showToast(`同步成功！已更新 ${syncedDates} 个期次及最新赛果 (${upd})`);
+        return true;
+      } catch (e) {
+        if (!silent) {
+          const ts = new Date().toTimeString().slice(0, 8);
+          document.getElementById('syncStatusText').textContent = `当前为本地内置快照 (${matches.length}场 · ${ts})`;
+          showToast('未检测到同源 data/matches.json（上传 GitHub Actions 包后即可一键同步）');
+        }
+        return false;
+      }
+    }
+
     // Sync Live Button
     document.getElementById('btnSyncLive').addEventListener('click', async () => {
       const icon = document.getElementById('syncIcon');
       icon.classList.add('animate-spin');
-      document.getElementById('syncStatusText').textContent = '正在尝试同步实时赔率...';
-      try {
-        // Attempt fetch with short timeout; third-party lottery sites block browser cross-origin reads, so handle gracefully
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 2200);
-        await fetch('https://cp.zgzcw.com/lottery/jchtplayvsForJsp.action?lotteryId=47&type=jcmini', { mode: 'no-cors', signal: ctrl.signal });
-        clearTimeout(tid);
-      } catch (e) {
-        // Expected when third-party domain disallows direct browser read
-      }
-      const now = new Date();
-      const ts = now.toTimeString().slice(0, 8);
+      document.getElementById('syncStatusText').textContent = '正在同步最新赛程与赔率...';
+      await syncFromRepoJson(false);
       icon.classList.remove('animate-spin');
-      document.getElementById('syncStatusText').textContent = `已同步竞彩快照 (${matches.length}场 · ${ts})`;
-      showToast('已完成实时数据校验（如需导入最新网页行，可使用「导入/解析网页数据」）');
     });
 
     // Import Modal
@@ -2682,6 +2739,71 @@
     document.getElementById('btnCloseImport').addEventListener('click', closeModal);
     document.getElementById('btnCancelImport').addEventListener('click', closeModal);
 
+    document.getElementById('btnFetchUrl').addEventListener('click', async () => {
+      const urlVal = document.getElementById('inpFetchUrl').value.trim();
+      if (!urlVal || !/^https?:\/\//i.test(urlVal)) {
+        showToast('请输入以 http:// 或 https:// 开头的有效网页链接');
+        return;
+      }
+      const btn = document.getElementById('btnFetchUrl');
+      const origTxt = btn.textContent;
+      btn.textContent = '读取中...';
+      btn.disabled = true;
+      let loadedText = '';
+      try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 8000);
+        const resp = await fetch('https://r.jina.ai/' + urlVal, { signal: ctrl.signal });
+        clearTimeout(tid);
+        if (resp.ok) loadedText = await resp.text();
+      } catch (e) {}
+
+      if (!loadedText || loadedText.length < 60) {
+        try {
+          const ctrl2 = new AbortController();
+          const tid2 = setTimeout(() => ctrl2.abort(), 8000);
+          const resp2 = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(urlVal), { signal: ctrl2.signal });
+          clearTimeout(tid2);
+          if (resp2.ok) {
+            const rawHtml = await resp2.text();
+            const doc = new DOMParser().parseFromString(rawHtml, 'text/html');
+            loadedText = (doc.body?.innerText || '').replace(/\s+/g, ' ').trim();
+          }
+        } catch (e2) {}
+      }
+
+      btn.textContent = origTxt;
+      btn.disabled = false;
+      if (loadedText && loadedText.length >= 40) {
+        document.getElementById('txtPasteRaw').value = loadedText.slice(0, 12000);
+        showToast('已读取网页文本！请点击「批量同步赛果比分」或「智能提取字段」');
+      } else {
+        showToast('该网站开启了防爬或动态渲染限制，建议直接复制网页文字粘贴到下方，或将链接发给 Gemini 技能同步');
+      }
+    });
+
+    function extractScoreFromLine(line, m) {
+      // 1. Prefer score explicitly located between home and away team names
+      if (line.includes(m.home) && line.includes(m.away)) {
+        const iH = line.indexOf(m.home) + m.home.length;
+        const iA = line.indexOf(m.away, iH);
+        if (iA > iH) {
+          const between = line.slice(iH, iA);
+          const bm = between.match(/(\d{1,2})\s*[:\-]\s*(\d{1,2})/);
+          if (bm) return { hg: parseInt(bm[1], 10), ag: parseInt(bm[2], 10) };
+        }
+      }
+      // 2. Otherwise strip dates (YYYY-MM-DD / MM-DD) and kickoff times (HH:MM) first
+      let cleaned = line
+        .replace(/\b\d{4}-\d{2}-\d{2}\b/g, ' ')
+        .replace(/\b\d{2}-\d{2}\b/g, ' ')
+        .replace(/\b(?:[01]\d|2[0-3]):[0-5]\d\b/g, ' ');
+      if (m.kickoff) cleaned = cleaned.replace(m.kickoff, ' ');
+      const sm = cleaned.match(/(\d{1,2})\s*[:\-]\s*(\d{1,2})/);
+      if (!sm) return null;
+      return { hg: parseInt(sm[1], 10), ag: parseInt(sm[2], 10) };
+    }
+
     document.getElementById('btnSyncScoresFromText').addEventListener('click', () => {
       const raw = document.getElementById('txtPasteRaw').value.trim();
       if (!raw) { showToast('请先粘贴包含赛果比分的文本'); return; }
@@ -2689,20 +2811,20 @@
       let matched = 0;
       let settledLegs = 0;
       lines.forEach(line => {
-        const scoreM = line.match(/(\d{1,2})\s*[:\-]\s*(\d{1,2})/);
-        if (!scoreM) return;
-        const hg = parseInt(scoreM[1], 10);
-        const ag = parseInt(scoreM[2], 10);
         const m = matches.find(x =>
           line.includes(x.code.replace(/\s+/g, '')) ||
           line.includes(x.code) ||
           (line.includes(x.home) && line.includes(x.away))
         );
-        if (m) {
-          matchResults[m.id] = { homeGoals: hg, awayGoals: ag };
-          settledLegs += settleReviewLegsFromScore(m, hg, ag);
-          matched++;
-        }
+        if (!m) return;
+        const sc = extractScoreFromLine(line, m);
+        if (!sc) return;
+        let hth = '', hta = '';
+        const htM = line.match(/半场\s*(\d{1,2})\s*[:\-]\s*(\d{1,2})/);
+        if (htM) { hth = parseInt(htM[1], 10); hta = parseInt(htM[2], 10); }
+        matchResults[m.id] = { ...(matchResults[m.id] || {}), homeGoals: sc.hg, awayGoals: sc.ag, htHome: hth, htAway: hta };
+        settledLegs += settleReviewLegsFromScore(m, sc.hg, sc.ag, hth === '' ? null : hth, hta === '' ? null : hta);
+        matched++;
       });
       if (matched > 0) {
         saveMatchResults();
