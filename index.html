@@ -1340,11 +1340,23 @@
       '2026-11-16': JSON.parse(JSON.stringify(MONDAY_MATCHES)),
       '2026-11-17': JSON.parse(JSON.stringify(TUESDAY_MATCHES))
     };
+    const DATA_VERSION = '2026-11-17-v2';
     try {
-      const savedIssues = localStorage.getItem('jc_sim_issues_v1');
-      if (savedIssues) {
-        const parsed = JSON.parse(savedIssues);
-        issuesByDate = { ...issuesByDate, ...parsed };
+      const prevVer = localStorage.getItem('jc_sim_data_ver');
+      if (prevVer !== DATA_VERSION) {
+        // New built-in schedule version released: keep built-in 2026-11-15/16/17 fresh without stale cache overwrite
+        localStorage.setItem('jc_sim_data_ver', DATA_VERSION);
+        localStorage.setItem('jc_sim_issues_v1', JSON.stringify(issuesByDate));
+      } else {
+        const savedIssues = localStorage.getItem('jc_sim_issues_v1');
+        if (savedIssues) {
+          const parsed = JSON.parse(savedIssues);
+          Object.keys(parsed).forEach(d => {
+            if (Array.isArray(parsed[d]) && parsed[d].length > 0) {
+              issuesByDate[d] = parsed[d];
+            }
+          });
+        }
       }
     } catch (e) {}
 
