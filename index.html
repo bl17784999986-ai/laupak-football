@@ -537,7 +537,7 @@
       <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800 text-[11px] text-slate-400">
         <div class="flex items-center gap-3 flex-wrap">
           <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>有开盘/已同步赛事</span>
-          <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-sky-400"></span>今日 (2026-11-17)</span>
+          <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-sky-400"></span>今日 (2026-11-18)</span>
           <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-600"></span>暂无开盘</span>
         </div>
         <button id="btnCalGoToday" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 font-medium transition">跳转到今日 (11-17)</button>
@@ -1340,7 +1340,7 @@
       '2026-11-16': JSON.parse(JSON.stringify(MONDAY_MATCHES)),
       '2026-11-17': JSON.parse(JSON.stringify(TUESDAY_MATCHES))
     };
-    const DATA_VERSION = '2026-11-17-v2';
+    const DATA_VERSION = '2026-11-18-v1';
     try {
       const prevVer = localStorage.getItem('jc_sim_data_ver');
       if (prevVer !== DATA_VERSION) {
@@ -1407,7 +1407,17 @@
       },
       sun011: {
         homeGoals: 4, awayGoals: 1, htHome: '', htAway: ''
-      }
+      },
+      tue001: { homeGoals: 0, awayGoals: 7, htHome: 0, htAway: 4 },
+      tue002: { homeGoals: 2, awayGoals: 2, htHome: 1, htAway: 2 },
+      tue003: { homeGoals: 1, awayGoals: 2, htHome: '', htAway: '' },
+      tue004: { homeGoals: 2, awayGoals: 1, htHome: 1, htAway: 1 },
+      tue005: { homeGoals: 1, awayGoals: 1, htHome: 1, htAway: 1 },
+      tue006: { homeGoals: 2, awayGoals: 3, htHome: 2, htAway: 1 },
+      tue007: { homeGoals: 2, awayGoals: 3, htHome: 2, htAway: 2 },
+      tue008: { homeGoals: 1, awayGoals: 1, htHome: 1, htAway: 0 },
+      tue009: { homeGoals: 3, awayGoals: 0, htHome: 1, htAway: 0 },
+      tue010: { homeGoals: 0, awayGoals: 0, htHome: 0, htAway: 0 }
     };
 
     // Load saved ticket & review records safely
@@ -1822,17 +1832,27 @@
       lossScores.push(buildScoreObj('负其他', lossOtherPct));
 
       const allScores = [...winScores, ...drawScores, ...lossScores];
-      const dirSortedScores = [...allScores].sort((x, y) => {
-        const isDrawX = x.label.includes(':') && x.label.split(':')[0] === x.label.split(':')[1];
-        const isDrawY = y.label.includes(':') && y.label.split(':')[0] === y.label.split(':')[1];
-        const isHomeX = x.label === '胜其他' || (x.label.includes(':') && +x.label.split(':')[0] > +x.label.split(':')[1]);
-        const isHomeY = y.label === '胜其他' || (y.label.includes(':') && +y.label.split(':')[0] > +y.label.split(':')[1]);
-        const isAwayX = x.label === '负其他' || (x.label.includes(':') && +x.label.split(':')[0] < +x.label.split(':')[1]);
-        const isAwayY = y.label === '负其他' || (y.label.includes(':') && +y.label.split(':')[0] < +y.label.split(':')[1]);
-        const wX = x.pct * (probH >= 48 && isHomeX ? 1.35 : probA >= 46 && isAwayX ? 1.35 : probD >= 30 && isDrawX ? 1.2 : 1.0);
-        const wY = y.pct * (probH >= 48 && isHomeY ? 1.35 : probA >= 46 && isAwayY ? 1.35 : probD >= 30 && isDrawY ? 1.2 : 1.0);
-        return wY - wX;
-      });
+      // Scoreline alignment strictly matching BOTH primary 1X2 verdict AND Handicap verdict
+      function scoreAlignWeight(lbl) {
+        if (lbl === '胜其他') return recHandicap.endsWith('胜') && probH >= 50 ? 1.2 : 0.4;
+        if (lbl === '负其他') return recHandicap.endsWith('负') && probA >= 46 ? 1.2 : 0.4;
+        if (lbl === '平其他') return 0.2;
+        const [hg, ag] = lbl.split(':').map(Number);
+        const hcDiff = hg + m.handicap - ag;
+        let w = 1.0;
+        if (recHandicap.endsWith('胜')) {
+          w *= (hcDiff > 0 ? 2.4 : (hg > ag ? 0.9 : 0.35));
+        } else if (recHandicap.endsWith('平')) {
+          w *= (hcDiff === 0 ? 2.4 : ((probH >= 48 && hg > ag) || (probA >= 46 && hg < ag) ? 0.95 : 0.35));
+        } else if (recHandicap.endsWith('负')) {
+          w *= (hcDiff < 0 ? 2.4 : (hg < ag ? 0.9 : 0.35));
+        }
+        if (probH >= 50 && hg > ag) w *= 1.35;
+        else if (probA >= 46 && hg < ag) w *= 1.35;
+        else if (probD >= 30 && hg === ag) w *= 1.25;
+        return w;
+      }
+      const dirSortedScores = [...allScores].sort((x, y) => (y.pct * scoreAlignWeight(y.label)) - (x.pct * scoreAlignWeight(x.label)));
       const topPoissonScores = dirSortedScores.slice(0, 3).map(x => ({
         score: x.label.replace(':', '-'),
         pct: `${x.pct.toFixed(0)}%`,
@@ -3645,7 +3665,7 @@
       const firstDay = new Date(calViewYear, calViewMonth, 1).getDay(); // 0=Sun..6=Sat
       const mondayOffset = (firstDay + 6) % 7;
       const daysInMonth = new Date(calViewYear, calViewMonth + 1, 0).getDate();
-      const todayStr = '2026-11-17';
+      const todayStr = '2026-11-18';
 
       let cells = [];
       for (let i = 0; i < mondayOffset; i++) {
