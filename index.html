@@ -61,11 +61,11 @@
           <p class="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
             <button id="btnOpenCalendar" type="button" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 transition">
               <span>📅</span>
-              <span id="activeIssueLabel" class="font-semibold">2026-11-17 星期二</span>
+              <span id="activeIssueLabel" class="font-semibold">2026-11-18 星期三</span>
               <span class="text-[10px] text-sky-400">切换日历 ▾</span>
             </button>
             <span class="text-slate-600">•</span>
-            <span id="syncStatusText" class="text-emerald-400/90">已同步 2026-11-17 竞彩对阵 (10场)</span>
+            <span id="syncStatusText" class="text-emerald-400/90">已同步 2026-11-18 竞彩对阵 (4场巴甲)</span>
             <span class="text-slate-600 hidden sm:inline">•</span>
             <span id="liveClock" class="hidden sm:inline tabular-nums text-slate-400"></span>
           </p>
@@ -540,7 +540,7 @@
           <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-sky-400"></span>今日 (2026-11-18)</span>
           <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-600"></span>暂无开盘</span>
         </div>
-        <button id="btnCalGoToday" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 font-medium transition">跳转到今日 (11-17)</button>
+        <button id="btnCalGoToday" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 font-medium transition">跳转到今日 (11-18)</button>
       </div>
     </div>
   </div>
@@ -1332,15 +1332,81 @@
       }
     ];
 
-    let activeDate = '2026-11-17';
+    const WEDNESDAY_MATCHES = [
+      {
+        id: 'wed001', code: '周三 001', league: '巴甲', group: '第35轮',
+        kickoff: '06:30', cutoff: '21:40', status: '未开赛',
+        home: '库里蒂巴', away: '桑托斯', homeRank: 13, awayRank: 9, handicap: 1,
+        odds0: { h: 2.65, d: 3.15, a: 2.35 }, oddsHc: { h: 1.46, d: 3.85, a: 5.05 },
+        initEuro: { h: 2.75, d: 3.20, a: 2.45 }, instEuro: { h: 2.68, d: 3.18, a: 2.42 },
+        asianInit: '平手 0.94', asianInst: '平手 0.90',
+        homeForm: ['L', 'W', 'L', 'L', 'D'], awayForm: ['D', 'L', 'W', 'D', 'L'],
+        homeStats: '34战11胜9平14负积42分排第13（进40球失51球），近5场1胜1平3负。',
+        awayStats: '34战12胜11平11负积47分排第9（进50球失49球），近5场1胜2平2负。',
+        homeInjuries: '主力框架基本可用，主场抢分稳固中游席位。', awayInjuries: '客场进攻效率一般，防线偶有疏漏。',
+        h2h: '自2011年交手25次库里蒂巴6胜6平13负，但本季首回合客场3-0大胜桑托斯。',
+        homeMotiv: 74, awayMotiv: 76,
+        motivationNote: '中游无欲无求对决，平赔压在3.15低位，双方握手言和（1-1）概率偏高。'
+      },
+      {
+        id: 'wed002', code: '周三 002', league: '巴甲', group: '第35轮',
+        kickoff: '07:30', cutoff: '21:40', status: '未开赛',
+        home: '弗拉门戈', away: '巴拉纳竞技', homeRank: 1, awayRank: 5, handicap: -1,
+        odds0: { h: 1.38, d: 4.15, a: 6.10 }, oddsHc: { h: 2.22, d: 3.40, a: 2.55 },
+        initEuro: { h: 1.45, d: 4.20, a: 6.40 }, instEuro: { h: 1.38, d: 4.15, a: 6.10 },
+        asianInit: '主让一球 0.88', asianInst: '主让一球/球半 0.92',
+        homeForm: ['W', 'W', 'W', 'D', 'W'], awayForm: ['L', 'L', 'D', 'L', 'W'],
+        homeStats: '34战23胜7平4负积76分高居榜首（进71球失29球），近5场4胜1平0负（进13失4），本场取胜即可提前加冕冠军。',
+        awayStats: '34战15胜9平10负积54分排第5（进51球失43球），近5场1胜1平3负状态下滑。',
+        homeInjuries: '多名伤员归队，尽管八名主力黄牌在身，主帅雅尔丁仍确认派出全主力冲冠。',
+        awayInjuries: '莱奥·佩莱回归名单，俱乐部主席现场督战但整体客场抗压吃力。',
+        h2h: '近42次交手弗拉门戈16胜11平15负，本季首回合客场1-1战平巴拉纳竞技。',
+        homeMotiv: 94, awayMotiv: 72,
+        motivationNote: '弗拉门戈全主力主场赢球即提前夺冠，战意与基本面双重碾压，重点关注主胜及让(-1)胜。'
+      },
+      {
+        id: 'wed003', code: '周三 003', league: '巴甲', group: '第35轮',
+        kickoff: '08:30', cutoff: '21:40', status: '未开赛',
+        home: '科林蒂安', away: '博塔弗戈', homeRank: 17, awayRank: 12, handicap: -1,
+        odds0: { h: 2.15, d: 3.05, a: 3.10 }, oddsHc: { h: 4.45, d: 3.50, a: 1.60 },
+        initEuro: { h: 2.05, d: 3.10, a: 3.35 }, instEuro: { h: 2.15, d: 3.05, a: 3.10 },
+        asianInit: '主让平半 0.88', asianInst: '主让平半 0.96',
+        homeForm: ['D', 'L', 'W', 'D', 'L'], awayForm: ['W', 'L', 'D', 'W', 'L'],
+        homeStats: '34战9胜10平15负积37分深陷第17降级区（进36球失42球），近5场1胜2平2负。',
+        awayStats: '34战11胜9平14负积42分排第12（进46球失53球），近5场2胜1平2负，瞄准45分保级安全线。',
+        homeInjuries: '中场核心加罗因伤缺阵、前锋尤里停赛，攻防两端核心同时缺失影响极大。',
+        awayInjuries: '蒂特带队客场反击效率尚可，阵容完整度高于主队。',
+        h2h: '交手29次科林蒂安9胜8平12负，首回合博塔弗戈主场3-1击败科林蒂安。',
+        homeMotiv: 86, awayMotiv: 78,
+        motivationNote: '科林蒂安虽处降级区抢分迫切，但核心加罗伤缺+尤里停赛导致主胜抬水，需高度防范客队不败（平/让负）。'
+      },
+      {
+        id: 'wed004', code: '周三 004', league: '巴甲', group: '第35轮',
+        kickoff: '08:30', cutoff: '21:40', status: '未开赛',
+        home: '格雷米奥', away: '巴伊亚', homeRank: 18, awayRank: 6, handicap: -1,
+        odds0: { h: 2.28, d: 3.12, a: 2.82 }, oddsHc: { h: 4.75, d: 3.60, a: 1.54 },
+        initEuro: { h: 2.40, d: 3.15, a: 2.75 }, instEuro: { h: 2.28, d: 3.12, a: 2.82 },
+        asianInit: '平手 0.88', asianInst: '主让平半 0.95',
+        homeForm: ['W', 'W', 'D', 'W', 'L'], awayForm: ['L', 'W', 'D', 'L', 'W'],
+        homeStats: '34战9胜10平15负积37分排第18降级区，但近5场3胜1平1负（进7球失4球）强势反弹。',
+        awayStats: '34战14胜11平9负积53分排第6（进50球失45球），近5场2胜1平2负但客场防守失球偏多。',
+        homeInjuries: '主场保级战意高涨，近期防线稳定性明显回升。', awayInjuries: '客场作战存在一定轮换考量。',
+        h2h: '交手31次格雷米奥14胜9平8负占优，本季首回合客场1-1战平巴伊亚。',
+        homeMotiv: 90, awayMotiv: 74,
+        motivationNote: '格雷米奥保级生死战且近5场3胜1平1负走势极佳，初即主胜降水并升至主让平半，看好主队抢分不败。'
+      }
+    ];
+
+    let activeDate = '2026-11-18';
     let calViewYear = 2026;
     let calViewMonth = 10; // 0-indexed: 10 = November
     let issuesByDate = {
       '2026-11-15': JSON.parse(JSON.stringify(BASE_MATCHES)),
       '2026-11-16': JSON.parse(JSON.stringify(MONDAY_MATCHES)),
-      '2026-11-17': JSON.parse(JSON.stringify(TUESDAY_MATCHES))
+      '2026-11-17': JSON.parse(JSON.stringify(TUESDAY_MATCHES)),
+      '2026-11-18': JSON.parse(JSON.stringify(WEDNESDAY_MATCHES))
     };
-    const DATA_VERSION = '2026-11-18-v1';
+    const DATA_VERSION = '2026-11-18-v2';
     try {
       const prevVer = localStorage.getItem('jc_sim_data_ver');
       if (prevVer !== DATA_VERSION) {
@@ -3735,7 +3801,7 @@
     document.getElementById('btnCalGoToday').addEventListener('click', () => {
       calViewYear = 2026;
       calViewMonth = 10;
-      switchIssueDate('2026-11-17');
+      switchIssueDate('2026-11-18');
       closeCalModal();
       showToast('已切换至今日 (2026-11-16)');
     });
