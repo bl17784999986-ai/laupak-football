@@ -366,6 +366,34 @@
           <!-- Recommended combos injected by JS -->
         </div>
       </div>
+
+      <!-- All-Match Pre-Match Predictions & Red/Black Post-Match Review -->
+      <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between gap-2 border-b border-slate-800 pb-2 flex-wrap">
+          <div>
+            <h2 class="text-sm font-bold text-white flex items-center gap-1.5">
+              <span>📋</span>
+              <span>当期全盘推演与红黑复盘</span>
+            </h2>
+            <p class="text-[11px] text-slate-400">全量胜平负 / 半全场 / 比分推荐与命中率统计</p>
+          </div>
+          <select id="digestFilterSelect" class="px-2 py-1 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-200 focus:outline-none">
+            <option value="ALL">全部场次</option>
+            <option value="SETTLED">已出赛果</option>
+            <option value="MISS">仅看中黑复盘</option>
+          </select>
+        </div>
+
+        <!-- Accuracy KPI Bar -->
+        <div id="digestAccuracyBar" class="grid grid-cols-3 gap-1.5 text-center text-[11px] tabular-nums">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Per-Match Deduction & Red/Black List -->
+        <div id="digestListContainer" class="space-y-2.5 max-h-[680px] overflow-y-auto pr-1">
+          <!-- Populated by JS -->
+        </div>
+      </div>
     </aside>
   </main>
 
@@ -1570,7 +1598,7 @@
       '2026-11-19': JSON.parse(JSON.stringify(THURSDAY_MATCHES)),
       '2026-11-20': JSON.parse(JSON.stringify(FRIDAY_MATCHES))
     };
-    const DATA_VERSION = '2026-11-20-v1';
+    const DATA_VERSION = '2026-11-20-v3';
     try {
       const prevVer = localStorage.getItem('jc_sim_data_ver');
       if (prevVer !== DATA_VERSION) {
@@ -1610,6 +1638,7 @@
     let expandedMatchIds = { sun010: true };
 
     let reviewRecords = [];
+    let missReasons = {}; // { [matchId]: customNote }
     let matchResults = {
       sun001: {
         homeGoals: 1, awayGoals: 1, htHome: 0, htAway: 0,
@@ -1647,7 +1676,14 @@
       tue007: { homeGoals: 2, awayGoals: 3, htHome: 2, htAway: 2 },
       tue008: { homeGoals: 1, awayGoals: 1, htHome: 1, htAway: 0 },
       tue009: { homeGoals: 3, awayGoals: 0, htHome: 1, htAway: 0 },
-      tue010: { homeGoals: 0, awayGoals: 0, htHome: 0, htAway: 0 }
+      tue010: { homeGoals: 0, awayGoals: 0, htHome: 0, htAway: 0 },
+      thu001: { homeGoals: 2, awayGoals: 1, htHome: '', htAway: '' },
+      thu002: { homeGoals: 0, awayGoals: 1, htHome: 0, htAway: 1 },
+      thu003: { homeGoals: 1, awayGoals: 3, htHome: 1, htAway: 1 },
+      wed001: { homeGoals: 0, awayGoals: 1, htHome: '', htAway: '' },
+      wed002: { homeGoals: 2, awayGoals: 1, htHome: '', htAway: '' },
+      wed003: { homeGoals: 4, awayGoals: 0, htHome: 2, htAway: 0 },
+      wed004: { homeGoals: 0, awayGoals: 0, htHome: 0, htAway: 0 }
     };
 
     // Load saved ticket & review records safely
@@ -1656,6 +1692,8 @@
       if (saved) ticket = JSON.parse(saved);
       const savedRev = localStorage.getItem('jc_sim_reviews_v1');
       if (savedRev) reviewRecords = JSON.parse(savedRev);
+      const savedMiss = localStorage.getItem('jc_sim_miss_notes_v1');
+      if (savedMiss) missReasons = JSON.parse(savedMiss);
       const savedRes = localStorage.getItem('jc_sim_results_v1');
       if (savedRes) matchResults = { ...matchResults, ...JSON.parse(savedRes) };
     } catch (e) {}
@@ -2002,21 +2040,34 @@
       // Blend Poisson handicap probabilities with real 竞彩让球 implied probabilities (50/50)
       const hcImp = calcImplied(m.oddsHc.h, m.oddsHc.d, m.oddsHc.a);
       const hcSum = hcWin + hcDraw + hcLoss || 1;
-      const hcProbH = Math.round(((hcWin / hcSum) * 100 * 0.5) + (hcImp.pH * 0.5));
-      const hcProbD = Math.round(((hcDraw / hcSum) * 100 * 0.5) + (hcImp.pD * 0.5));
+      let rawHcH = ((hcWin / hcSum) * 100 * 0.5) + (hcImp.pH * 0.5);
+      let rawHcD = ((hcDraw / hcSum) * 100 * 0.5) + (hcImp.pD * 0.5);
+      let rawHcA = ((hcLoss / hcSum) * 100 * 0.5) + (hcImp.pA * 0.5);
+
+      // Apply directional conviction calibration so Handicap bar aligns with primary 1X2 conviction
+      if (probH >= 50 && m.handicap === -1) {
+        rawHcH *= 1.45;
+        rawHcD *= 1.35;
+        rawHcA *= 0.55;
+      } else if (probA >= 46 && m.handicap === 1) {
+        rawHcA *= 1.45;
+        rawHcD *= 1.35;
+        rawHcH *= 0.55;
+      }
+      const calHcSum = rawHcH + rawHcD + rawHcA || 1;
+      const hcProbH = Math.round((rawHcH / calHcSum) * 100);
+      const hcProbD = Math.round((rawHcD / calHcSum) * 100);
       const hcProbA = Math.max(1, 100 - hcProbH - hcProbD);
 
-      // Keep handicap recommendation logically consistent with primary 1X2 verdict!
+      // Keep handicap recommendation strictly consistent with calibrated bar & primary 1X2 verdict
       const hcSign = m.handicap > 0 ? '+' + m.handicap : '' + m.handicap;
       let recHandicap = '';
       if (m.handicap <= -2) {
         recHandicap = hcProbH >= hcProbD ? `让(${hcSign})胜` : `让(${hcSign})平`;
       } else if (probH >= 50 && m.handicap === -1) {
-        // Primary is Home Win: compare Home win by 2+ (让胜) vs Home win by exact 1 (让平)
-        recHandicap = hcProbH >= hcProbD * 1.15 ? `让(${hcSign})胜` : `让(${hcSign})平`;
+        recHandicap = hcProbH >= hcProbD ? `让(${hcSign})胜` : `让(${hcSign})平`;
       } else if (probA >= 46 && m.handicap === 1) {
-        // Primary is Away Win with Home +1: compare Away win by 2+ (让负) vs Away win by exact 1 (让平)
-        recHandicap = hcProbA >= hcProbD * 1.15 ? `让(${hcSign})负` : `让(${hcSign})平`;
+        recHandicap = hcProbA >= hcProbD ? `让(${hcSign})负` : `让(${hcSign})平`;
       } else if (hcProbH >= hcProbD && hcProbH >= hcProbA) {
         recHandicap = `让(${hcSign})胜`;
       } else if (hcProbD >= hcProbH && hcProbD >= hcProbA) {
@@ -2539,6 +2590,7 @@
         const cnt = settleReviewLegsFromScore(m, hg, ag, hth === '' ? null : hth, hta === '' ? null : hta);
         renderMatchList();
         renderAnalysisWorkspace();
+        renderAllMatchDigest();
         showToast(cnt > 0 ? `已保存 ${m.home} ${hg}:${ag} ${m.away}，并自动核对 ${cnt} 条复盘记录` : `已保存完场比分 ${hg}:${ag}`);
       });
 
@@ -2756,7 +2808,7 @@
               <div class="bg-amber-400 transition-all duration-300" style="width:${a.hcProbD}%"></div>
               <div class="bg-sky-500 transition-all duration-300" style="width:${a.hcProbA}%"></div>
             </div>
-            <div class="text-[10px] text-slate-400">让球胜平负推演 · 优选: <span class="text-emerald-300">${a.recHandicap}</span></div>
+            <div class="text-[10px] text-slate-400">让球方向置信度 · 优选: <span class="text-emerald-300">${a.recHandicap}</span></div>
           </div>
         </div>
 
@@ -2909,6 +2961,7 @@
       renderTicket();
     renderRecommendedCombos();
     renderReviewSection();
+    renderAllMatchDigest();
       showToast(`已将 ${m.code} [${playType}: ${pick}] 加入推盘单`);
     }
 
@@ -3887,6 +3940,7 @@
       syncInputsToMatch();
       renderAnalysisWorkspace();
       renderRecommendedCombos();
+      renderAllMatchDigest();
     }
 
     function renderCalendarModal() {
@@ -3969,6 +4023,170 @@
       closeCalModal();
       showToast('已切换至今日 (2026-11-16)');
     });
+
+    // =========================================================================
+    // Right Sidebar: All-Match Pre-Match Predictions & Red/Black Review
+    // =========================================================================
+    function saveMissReasons() {
+      try {
+        localStorage.setItem('jc_sim_miss_notes_v1', JSON.stringify(missReasons));
+      } catch (e) {}
+    }
+
+    function autoDiagnoseMiss(m, a, ob, spfHit, htftHit, scoreHit) {
+      if (missReasons[m.id]) return missReasons[m.id];
+      const reasons = [];
+      if (!spfHit) {
+        if (a.upsetScore >= 42) {
+          reasons.push(`赛前冷门指数达 ${a.upsetScore}/100，${ob.hg === ob.ag ? '双方胶着战平' : '受让/弱势方打出冷门'}`);
+        } else {
+          reasons.push(`强弱定位与临场走势出现偏差，实际赛果为 ${ob.hg}:${ob.ag}（${ob.spfLabel}）`);
+        }
+      }
+      if (!htftHit && ob.hasHt) {
+        reasons.push(`半场 ${ob.hth}:${ob.hta} 走势偏离预期，半全场打出「${ob.htftLabel}」`);
+      }
+      if (!scoreHit) {
+        reasons.push(`实际总进球 ${ob.hg + ob.ag} 球（${ob.scoreLabel}），攻防转换效率超出泊松主区间`);
+      }
+      return reasons.join('；') || '命中全部主推方向，推演逻辑与赛果高度吻合。';
+    }
+
+    function renderAllMatchDigest() {
+      const accBar = document.getElementById('digestAccuracyBar');
+      const listEl = document.getElementById('digestListContainer');
+      const filterEl = document.getElementById('digestFilterSelect');
+      if (!accBar || !listEl) return;
+
+      let spfTotal = 0, spfHits = 0;
+      let htftTotal = 0, htftHits = 0;
+      let scoreTotal = 0, scoreHits = 0;
+
+      const items = matches.map(m => {
+        const a = computeAnalysis(m);
+        const res = matchResults[m.id];
+        const hasScore = res && res.homeGoals !== '' && res.awayGoals !== undefined && res.awayGoals !== '';
+        const predSpf = a.probH >= a.probA && a.probH >= a.probD ? '主胜' : a.probD >= a.probH && a.probD >= a.probA ? '平局' : '客胜';
+        const predHtft = a.topHtft.map(h => h.label);
+        const predScores = a.scores.map(s => s.score.replace('-', ':'));
+
+        let ob = null, spfHit = null, htftHit = null, scoreHit = null, hasMiss = false;
+        if (hasScore) {
+          ob = getOfficialResultBreakdown(m, a, res);
+          spfTotal++;
+          spfHit = ob.spfPick === predSpf;
+          if (spfHit) spfHits++;
+
+          if (ob.hasHt) {
+            htftTotal++;
+            htftHit = predHtft.includes(ob.htftLabel);
+            if (htftHit) htftHits++;
+          }
+
+          scoreTotal++;
+          scoreHit = predScores.includes(ob.scoreLabel);
+          if (scoreHit) scoreHits++;
+
+          hasMiss = !spfHit || (ob.hasHt && !htftHit) || !scoreHit;
+        }
+
+        return { m, a, hasScore, ob, predSpf, predHtft, predScores, spfHit, htftHit, scoreHit, hasMiss };
+      });
+
+      const pct = (h, t) => t > 0 ? `${Math.round((h / t) * 100)}% (${h}/${t})` : '--';
+      accBar.innerHTML = `
+        <div class="p-2 rounded-xl bg-slate-950/80 border border-slate-800">
+          <div class="text-[10px] text-slate-400">胜平负准确率</div>
+          <div class="font-bold text-rose-400 mt-0.5">${pct(spfHits, spfTotal)}</div>
+        </div>
+        <div class="p-2 rounded-xl bg-slate-950/80 border border-slate-800">
+          <div class="text-[10px] text-slate-400">半全场准确率</div>
+          <div class="font-bold text-amber-300 mt-0.5">${pct(htftHits, htftTotal)}</div>
+        </div>
+        <div class="p-2 rounded-xl bg-slate-950/80 border border-slate-800">
+          <div class="text-[10px] text-slate-400">比分命中率</div>
+          <div class="font-bold text-emerald-400 mt-0.5">${pct(scoreHits, scoreTotal)}</div>
+        </div>
+      `;
+
+      const fVal = filterEl ? filterEl.value : 'ALL';
+      const visible = items.filter(it => {
+        if (fVal === 'SETTLED') return it.hasScore;
+        if (fVal === 'MISS') return it.hasScore && it.hasMiss;
+        return true;
+      });
+
+      if (!visible.length) {
+        listEl.innerHTML = `<div class="p-4 text-center text-xs text-slate-500">当前筛选下暂无场次记录</div>`;
+        return;
+      }
+
+      const rbBadge = (hit) => hit === null
+        ? `<span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 text-[9px]">待开</span>`
+        : hit
+          ? `<span class="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[9px] font-bold">🔴 中红</span>`
+          : `<span class="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-600 text-[9px] font-bold">⚫ 中黑</span>`;
+
+      listEl.innerHTML = visible.map(it => {
+        const { m, a, hasScore, ob, predSpf, predHtft, predScores, spfHit, htftHit, scoreHit, hasMiss } = it;
+        const diag = hasScore && hasMiss ? autoDiagnoseMiss(m, a, ob, spfHit, htftHit, scoreHit) : '';
+        return `
+          <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/90 space-y-1.5 text-[11px]">
+            <div class="flex items-center justify-between gap-1">
+              <button type="button" data-mid="${m.id}" class="digest-jump-btn font-semibold text-white hover:text-emerald-400 truncate text-left transition">
+                ${m.code} ${m.home} vs ${m.away}
+              </button>
+              <span class="shrink-0 tabular-nums ${hasScore ? 'text-emerald-400 font-bold' : 'text-slate-500'}">
+                ${hasScore ? `完场 ${ob.hg}:${ob.ag}${ob.hasHt ? ` (半${ob.hth}:${ob.hta})` : ''}` : m.kickoff}
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 gap-1 text-[10px]">
+              <div class="flex items-center justify-between bg-slate-900/70 px-2 py-1 rounded">
+                <span class="text-slate-400">胜平负: <strong class="text-slate-200">${predSpf}</strong>${hasScore ? ` <span class="text-slate-500">(实:${ob.spfLabel})</span>` : ''}</span>
+                ${rbBadge(spfHit)}
+              </div>
+              <div class="flex items-center justify-between bg-slate-900/70 px-2 py-1 rounded">
+                <span class="text-slate-400">半全场: <strong class="text-amber-300">${predHtft.join(' / ')}</strong>${hasScore && ob.hasHt ? ` <span class="text-slate-500">(实:${ob.htftLabel})</span>` : ''}</span>
+                ${rbBadge(htftHit)}
+              </div>
+              <div class="flex items-center justify-between bg-slate-900/70 px-2 py-1 rounded">
+                <span class="text-slate-400">比分: <strong class="text-sky-300">${predScores.join(' / ')}</strong>${hasScore ? ` <span class="text-slate-500">(实:${ob.scoreLabel})</span>` : ''}</span>
+                ${rbBadge(scoreHit)}
+              </div>
+            </div>
+
+            ${hasScore && hasMiss ? `
+              <div class="pt-1 space-y-1">
+                <div class="text-[10px] text-rose-300/90 leading-snug"><strong class="text-rose-400">失利原因分析：</strong>${diag}</div>
+                <input type="text" data-mid="${m.id}" value="${missReasons[m.id] || ''}" placeholder="补充自定义失利复盘原因..." class="miss-note-inp w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-200 focus:outline-none focus:border-rose-500/60" />
+              </div>
+            ` : hasScore ? `
+              <div class="text-[10px] text-rose-400 font-medium">🎯 赛前推演核心方向全中！</div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      listEl.querySelectorAll('.digest-jump-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedMatchId = btn.dataset.mid;
+          renderMatchList();
+          syncInputsToMatch();
+          renderAnalysisWorkspace();
+        });
+      });
+
+      listEl.querySelectorAll('.miss-note-inp').forEach(inp => {
+        inp.addEventListener('change', () => {
+          missReasons[inp.dataset.mid] = inp.value.trim();
+          saveMissReasons();
+          showToast('已保存该场失利复盘分析');
+        });
+      });
+    }
+
+    document.getElementById('digestFilterSelect').addEventListener('change', renderAllMatchDigest);
 
     // Initial Boot
     renderLeagueFilters();
