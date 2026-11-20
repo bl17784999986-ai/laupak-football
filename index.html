@@ -61,11 +61,11 @@
           <p class="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
             <button id="btnOpenCalendar" type="button" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 transition">
               <span>📅</span>
-              <span id="activeIssueLabel" class="font-semibold">2026-11-18 星期三</span>
+              <span id="activeIssueLabel" class="font-semibold">2026-11-20 星期五</span>
               <span class="text-[10px] text-sky-400">切换日历 ▾</span>
             </button>
             <span class="text-slate-600">•</span>
-            <span id="syncStatusText" class="text-emerald-400/90">已同步 2026-11-18 竞彩对阵 (4场巴甲)</span>
+            <span id="syncStatusText" class="text-emerald-400/90">已同步 2026-11-20 竞彩对阵 (8场)</span>
             <span class="text-slate-600 hidden sm:inline">•</span>
             <span id="liveClock" class="hidden sm:inline tabular-nums text-slate-400"></span>
           </p>
@@ -537,10 +537,10 @@
       <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800 text-[11px] text-slate-400">
         <div class="flex items-center gap-3 flex-wrap">
           <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>有开盘/已同步赛事</span>
-          <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-sky-400"></span>今日 (2026-11-18)</span>
+          <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-sky-400"></span>今日 (2026-11-20)</span>
           <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-600"></span>暂无开盘</span>
         </div>
-        <button id="btnCalGoToday" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 font-medium transition">跳转到今日 (11-18)</button>
+        <button id="btnCalGoToday" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 font-medium transition">跳转到今日 (11-20)</button>
       </div>
     </div>
   </div>
@@ -1397,16 +1397,180 @@
       }
     ];
 
-    let activeDate = '2026-11-18';
+    const THURSDAY_MATCHES = [
+      {
+        id: 'thu001', code: '周四 001', league: '巴甲', group: '第35轮',
+        kickoff: '06:30', cutoff: '21:40', status: '未开赛',
+        home: '维多利亚', away: '布拉干蒂诺RB', homeRank: 18, awayRank: 9, handicap: 1,
+        odds0: { h: 2.78, d: 3.30, a: 2.10 }, oddsHc: { h: 1.52, d: 3.85, a: 4.50 },
+        initEuro: { h: 2.85, d: 3.30, a: 2.15 }, instEuro: { h: 2.78, d: 3.30, a: 2.10 },
+        asianInit: '客让平半 0.90', asianInst: '客让平半 0.86',
+        homeForm: ['L', 'D', 'W', 'L', 'D'], awayForm: ['W', 'D', 'W', 'L', 'W'],
+        homeStats: '巴甲第18深陷降级区，主场保级抢分战意强烈。', awayStats: '巴甲第9，客场整体反击效率尚可。',
+        homeInjuries: '主力框架基本可用。', awayInjuries: '阵容相对齐整。',
+        h2h: '巴甲中下游对决，主队受让(+1)抢分题材充足。', homeMotiv: 86, awayMotiv: 74,
+        motivationNote: '维多利亚保级生死战受让(+1)，客胜2.10但平赔3.30，主不败（让胜）具备博弈空间。'
+      },
+      {
+        id: 'thu002', code: '周四 002', league: '巴甲', group: '第35轮',
+        kickoff: '08:30', cutoff: '21:40', status: '未开赛',
+        home: '圣保罗', away: '弗鲁米嫩', homeRank: 10, awayRank: 4, handicap: -1,
+        odds0: { h: 2.47, d: 2.90, a: 2.57 }, oddsHc: { h: 5.85, d: 4.02, a: 1.39 },
+        initEuro: { h: 2.50, d: 2.95, a: 2.55 }, instEuro: { h: 2.47, d: 2.90, a: 2.57 },
+        asianInit: '平手 0.90', asianInst: '平手 0.88',
+        homeForm: ['D', 'W', 'L', 'D', 'W'], awayForm: ['W', 'D', 'W', 'W', 'L'],
+        homeStats: '巴甲第10，主场防守较为稳健，平局率偏高。', awayStats: '巴甲第4，客场抢分保前四席位。',
+        homeInjuries: '阵容基本齐整。', awayInjuries: '核心框架健康。',
+        h2h: '均势盘口下平赔低至2.90，双方握手言和或1球分胜负概率高。', homeMotiv: 76, awayMotiv: 80,
+        motivationNote: '典型均势低平赔格局（2.47 / 2.90 / 2.57），重点防平。'
+      },
+      {
+        id: 'thu003', code: '周四 003', league: '美职足', group: '季后赛',
+        kickoff: '08:30', cutoff: '21:40', status: '未开赛',
+        home: '奥兰多', away: '辛辛那提', homeRank: '--', awayRank: '--', handicap: -1,
+        odds0: { h: 2.25, d: 3.25, a: 2.58 }, oddsHc: { h: 4.57, d: 4.16, a: 1.47 },
+        initEuro: { h: 2.30, d: 3.25, a: 2.55 }, instEuro: { h: 2.25, d: 3.25, a: 2.58 },
+        asianInit: '主让平半 0.92', asianInst: '主让平半 0.90',
+        homeForm: ['W', 'D', 'W', 'L', 'W'], awayForm: ['W', 'L', 'W', 'D', 'W'],
+        homeStats: '美职足主场攻击力不俗，90分钟主动控场意愿强。', awayStats: '辛辛那提客场反击犀利，具备破门能力。',
+        homeInjuries: '主力齐整。', awayInjuries: '阵容完整。',
+        h2h: '美职足淘汰赛节奏开放，双方均具备进球能力。', homeMotiv: 82, awayMotiv: 82,
+        motivationNote: '主让平半均势格局，双方进球与分胜负倾向明显。'
+      },
+      {
+        id: 'thu004', code: '周四 004', league: '美职足', group: '季后赛',
+        kickoff: '11:00', cutoff: '21:40', status: '未开赛',
+        home: '西雅图', away: '盐湖城', homeRank: '--', awayRank: '--', handicap: -1,
+        odds0: { h: 1.62, d: 3.76, a: 3.90 }, oddsHc: { h: 3.35, d: 3.05, a: 1.95 },
+        initEuro: { h: 1.68, d: 3.75, a: 3.80 }, instEuro: { h: 1.62, d: 3.76, a: 3.90 },
+        asianInit: '主让半一 0.90', asianInst: '主让半一 0.85',
+        homeForm: ['W', 'W', 'D', 'W', 'W'], awayForm: ['L', 'W', 'D', 'L', 'W'],
+        homeStats: '西雅图主场胜率可观，进攻压迫力强。', awayStats: '盐湖城客场防守稳定性一般。',
+        homeInjuries: '主力健康。', awayInjuries: '防线轮换略吃紧。',
+        h2h: '西雅图主场对阵盐湖城整体占据上风。', homeMotiv: 84, awayMotiv: 76,
+        motivationNote: '主胜降水至1.62，正路支撑较足，关注主胜与让平。'
+      }
+    ];
+
+    const FRIDAY_MATCHES = [
+      {
+        id: 'fri001', code: '周五 001', league: '澳超', group: '常规赛',
+        kickoff: '16:40', cutoff: '16:20', status: '未开赛',
+        home: '西悉尼', away: '阿德莱德', homeRank: 6, awayRank: 12, handicap: -1,
+        odds0: { h: 1.54, d: 4.00, a: 4.16 }, oddsHc: { h: 2.60, d: 3.60, a: 2.10 },
+        initEuro: { h: 1.62, d: 3.95, a: 4.00 }, instEuro: { h: 1.54, d: 4.00, a: 4.16 },
+        asianInit: '主让半一 0.85', asianInst: '主让一球 0.94',
+        homeForm: ['W', 'D', 'W', 'W', 'L'], awayForm: ['L', 'L', 'D', 'L', 'W'],
+        homeStats: '澳超第6，主场进攻节奏快且近期抢分效率较高。', awayStats: '澳超第12垫底，客场失球偏多。',
+        homeInjuries: '主力框架健康。', awayInjuries: '防线存在伤病轮换。',
+        h2h: '澳超对攻节奏明显，主胜1.54定位清晰。', homeMotiv: 82, awayMotiv: 68,
+        motivationNote: '主胜稳步下调至1.54，看好西悉尼主场取胜。'
+      },
+      {
+        id: 'fri002', code: '周五 002', league: '日职', group: '常规赛',
+        kickoff: '18:00', cutoff: '17:40', status: '未开赛',
+        home: '柏太阳神', away: '千叶市原', homeRank: 2, awayRank: 17, handicap: -1,
+        odds0: { h: 1.37, d: 4.40, a: 5.50 }, oddsHc: { h: 2.17, d: 3.55, a: 2.52 },
+        initEuro: { h: 1.42, d: 4.35, a: 5.30 }, instEuro: { h: 1.37, d: 4.40, a: 5.50 },
+        asianInit: '主让一球 0.86', asianInst: '主让一球/球半 0.92',
+        homeForm: ['W', 'W', 'D', 'W', 'W'], awayForm: ['L', 'L', 'D', 'L', 'L'],
+        homeStats: '日职联高居第2，主场压迫力与进球效率极强。', awayStats: '日职联第17保级区，客场抗压能力有限。',
+        homeInjuries: '主力齐整。', awayInjuries: '防线压力较大。',
+        h2h: '强弱分明格局，主胜1.37支撑极强。', homeMotiv: 86, awayMotiv: 76,
+        motivationNote: '柏太阳神主场面对保级队优势显著，重点关注主胜及让(-1)胜。'
+      },
+      {
+        id: 'fri003', code: '周五 003', league: '日职', group: '常规赛',
+        kickoff: '18:00', cutoff: '17:40', status: '未开赛',
+        home: '鹿岛鹿角', away: '清水鼓动', homeRank: 6, awayRank: 15, handicap: -1,
+        odds0: { h: 1.39, d: 4.10, a: 5.70 }, oddsHc: { h: 2.28, d: 3.35, a: 2.49 },
+        initEuro: { h: 1.45, d: 4.05, a: 5.40 }, instEuro: { h: 1.39, d: 4.10, a: 5.70 },
+        asianInit: '主让一球 0.88', asianInst: '主让一球/球半 0.95',
+        homeForm: ['W', 'W', 'D', 'W', 'L'], awayForm: ['L', 'D', 'L', 'W', 'L'],
+        homeStats: '日职联第6，主场防守硬朗且进攻稳定。', awayStats: '日职联第15，客场表现起伏较大。',
+        homeInjuries: '主力健康。', awayInjuries: '轮换受限。',
+        h2h: '鹿岛主场对阵清水整体胜率较高。', homeMotiv: 82, awayMotiv: 72,
+        motivationNote: '主胜1.39位置稳固，首选主胜，防让(-1)平。'
+      },
+      {
+        id: 'fri004', code: '周五 004', league: '德乙', group: '常规赛',
+        kickoff: '01:30', cutoff: '21:40', status: '未开赛',
+        home: '比勒费', away: '马格德堡', homeRank: 6, awayRank: 4, handicap: -1,
+        odds0: { h: 2.02, d: 3.45, a: 2.82 }, oddsHc: { h: 4.06, d: 3.90, a: 1.57 },
+        initEuro: { h: 2.08, d: 3.45, a: 2.75 }, instEuro: { h: 2.02, d: 3.45, a: 2.82 },
+        asianInit: '主让平半 0.88', asianInst: '主让半球 0.98',
+        homeForm: ['W', 'D', 'W', 'L', 'W'], awayForm: ['W', 'W', 'D', 'L', 'W'],
+        homeStats: '德乙第6，主场攻防节奏明快。', awayStats: '德乙第4，客场进攻火力不俗。',
+        homeInjuries: '主力齐整。', awayInjuries: '阵容健康。',
+        h2h: '德乙上游强强对话，大比分与平局需同时防范。', homeMotiv: 80, awayMotiv: 80,
+        motivationNote: '主让平半/半球均势偏主，防平与高进球格局。'
+      },
+      {
+        id: 'fri005', code: '周五 005', league: '荷乙', group: '常规赛',
+        kickoff: '03:00', cutoff: '21:40', status: '未开赛',
+        home: '登博思', away: '芬洛', homeRank: 10, awayRank: 3, handicap: -1,
+        odds0: { h: 1.77, d: 3.98, a: 3.10 }, oddsHc: { h: 3.12, d: 3.95, a: 1.77 },
+        initEuro: { h: 1.85, d: 3.90, a: 3.00 }, instEuro: { h: 1.77, d: 3.98, a: 3.10 },
+        asianInit: '主让半球 0.90', asianInst: '主让半球 0.84',
+        homeForm: ['W', 'L', 'W', 'W', 'D'], awayForm: ['W', 'W', 'D', 'W', 'L'],
+        homeStats: '荷乙第10但主场拉力足，机构逆排名主让半球。', awayStats: '荷乙第3，客场攻强守弱。',
+        homeInjuries: '主力可用。', awayInjuries: '防线偶有失球。',
+        h2h: '荷乙开放对攻局，平赔高企至3.98，分胜负特征显著。', homeMotiv: 78, awayMotiv: 80,
+        motivationNote: '排名第10主场让第3半球且降水至1.77，需留意主胜正路或高赔客胜防冷。'
+      },
+      {
+        id: 'fri006', code: '周五 006', league: '德甲', group: '常规赛',
+        kickoff: '03:30', cutoff: '21:40', status: '未开赛',
+        home: '拜仁', away: '科隆', homeRank: 1, awayRank: 15, handicap: -3,
+        odds0: { h: 1.12, d: 8.50, a: 18.00 }, oddsHc: { h: 2.07, d: 4.71, a: 2.25 },
+        initEuro: { h: 1.12, d: 8.50, a: 18.00 }, instEuro: { h: 1.12, d: 8.50, a: 18.00 },
+        asianInit: '主让两球半/三球 0.90', asianInst: '主让两球半/三球 0.88',
+        homeForm: ['W', 'W', 'W', 'D', 'W'], awayForm: ['L', 'D', 'L', 'L', 'W'],
+        homeStats: '德甲榜首，主场火力恐怖（竞彩胜平负未开售，让球-3）。', awayStats: '德甲第15，客场面对拜仁以收缩防守为主。',
+        homeInjuries: '主力框架雄厚。', awayInjuries: '防线承压。',
+        h2h: '拜仁主场对科隆历史战绩全面占优。', homeMotiv: 84, awayMotiv: 72,
+        motivationNote: '让(-3)球深盘博弈，重点关注拜仁净胜球门槛（让胜 vs 让负）。'
+      },
+      {
+        id: 'fri007', code: '周五 007', league: '法甲', group: '常规赛',
+        kickoff: '03:45', cutoff: '21:40', status: '未开赛',
+        home: '特鲁瓦', away: '勒阿弗尔', homeRank: 17, awayRank: 18, handicap: -1,
+        odds0: { h: 1.93, d: 3.25, a: 3.19 }, oddsHc: { h: 3.97, d: 3.60, a: 1.64 },
+        initEuro: { h: 2.00, d: 3.25, a: 3.15 }, instEuro: { h: 1.93, d: 3.25, a: 3.19 },
+        asianInit: '主让半球 0.95', asianInst: '主让半球 0.90',
+        homeForm: ['L', 'D', 'W', 'L', 'D'], awayForm: ['L', 'L', 'D', 'L', 'W'],
+        homeStats: '法甲第17保级区，主场抢分意愿强烈。', awayStats: '法甲第18垫底，客场进攻效率偏低。',
+        homeInjuries: '阵容齐整。', awayInjuries: '客场减员微调。',
+        h2h: '保级直接对话（6分战），节奏偏谨慎。', homeMotiv: 88, awayMotiv: 86,
+        motivationNote: '法甲保级大战，主胜1.93配合平赔3.25，看好特鲁瓦不败（胜/平）。'
+      },
+      {
+        id: 'fri008', code: '周五 008', league: '西甲', group: '常规赛',
+        kickoff: '04:00', cutoff: '21:40', status: '未开赛',
+        home: '毕尔巴鄂', away: '西班牙人', homeRank: 7, awayRank: 13, handicap: -1,
+        odds0: { h: 1.37, d: 4.00, a: 6.25 }, oddsHc: { h: 2.28, d: 3.25, a: 2.55 },
+        initEuro: { h: 1.42, d: 4.00, a: 6.00 }, instEuro: { h: 1.37, d: 4.00, a: 6.25 },
+        asianInit: '主让一球 0.85', asianInst: '主让一球/球半 0.92',
+        homeForm: ['W', 'W', 'D', 'W', 'L'], awayForm: ['L', 'D', 'L', 'W', 'L'],
+        homeStats: '西甲第7，圣马梅斯主场气势与防守韧性极强。', awayStats: '西甲第13，客场拿分能力偏弱。',
+        homeInjuries: '主力框架健康。', awayInjuries: '客场防线承压。',
+        h2h: '毕尔巴鄂主场对阵西班牙人优势显著。', homeMotiv: 84, awayMotiv: 70,
+        motivationNote: '主胜低至1.37且让球稳步升盘，毕尔巴鄂主场取胜可期。'
+      }
+    ];
+
+    let activeDate = '2026-11-20';
     let calViewYear = 2026;
     let calViewMonth = 10; // 0-indexed: 10 = November
     let issuesByDate = {
       '2026-11-15': JSON.parse(JSON.stringify(BASE_MATCHES)),
       '2026-11-16': JSON.parse(JSON.stringify(MONDAY_MATCHES)),
       '2026-11-17': JSON.parse(JSON.stringify(TUESDAY_MATCHES)),
-      '2026-11-18': JSON.parse(JSON.stringify(WEDNESDAY_MATCHES))
+      '2026-11-18': JSON.parse(JSON.stringify(WEDNESDAY_MATCHES)),
+      '2026-11-19': JSON.parse(JSON.stringify(THURSDAY_MATCHES)),
+      '2026-11-20': JSON.parse(JSON.stringify(FRIDAY_MATCHES))
     };
-    const DATA_VERSION = '2026-11-18-v2';
+    const DATA_VERSION = '2026-11-20-v1';
     try {
       const prevVer = localStorage.getItem('jc_sim_data_ver');
       if (prevVer !== DATA_VERSION) {
@@ -3731,7 +3895,7 @@
       const firstDay = new Date(calViewYear, calViewMonth, 1).getDay(); // 0=Sun..6=Sat
       const mondayOffset = (firstDay + 6) % 7;
       const daysInMonth = new Date(calViewYear, calViewMonth + 1, 0).getDate();
-      const todayStr = '2026-11-18';
+      const todayStr = '2026-11-20';
 
       let cells = [];
       for (let i = 0; i < mondayOffset; i++) {
@@ -3801,7 +3965,7 @@
     document.getElementById('btnCalGoToday').addEventListener('click', () => {
       calViewYear = 2026;
       calViewMonth = 10;
-      switchIssueDate('2026-11-18');
+      switchIssueDate('2026-11-20');
       closeCalModal();
       showToast('已切换至今日 (2026-11-16)');
     });
