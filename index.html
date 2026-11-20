@@ -2113,24 +2113,29 @@
       lossScores.push(buildScoreObj('负其他', lossOtherPct));
 
       const allScores = [...winScores, ...drawScores, ...lossScores];
-      // Scoreline alignment strictly matching BOTH primary 1X2 verdict AND Handicap verdict
+      // Scoreline alignment strictly anchored to primary 1X2 direction first, then Handicap margin
+      const primaryDir = (probH >= probA && probH >= probD) ? 'H' : (probA >= probH && probA >= probD) ? 'A' : 'D';
       function scoreAlignWeight(lbl) {
-        if (lbl === '胜其他') return recHandicap.endsWith('胜') && probH >= 50 ? 1.2 : 0.4;
-        if (lbl === '负其他') return recHandicap.endsWith('负') && probA >= 46 ? 1.2 : 0.4;
-        if (lbl === '平其他') return 0.2;
+        if (lbl === '胜其他') return primaryDir === 'H' ? 0.9 : 0.1;
+        if (lbl === '负其他') return primaryDir === 'A' ? 0.9 : 0.1;
+        if (lbl === '平其他') return primaryDir === 'D' ? 0.5 : 0.05;
         const [hg, ag] = lbl.split(':').map(Number);
         const hcDiff = hg + m.handicap - ag;
         let w = 1.0;
-        if (recHandicap.endsWith('胜')) {
-          w *= (hcDiff > 0 ? 2.4 : (hg > ag ? 0.9 : 0.35));
-        } else if (recHandicap.endsWith('平')) {
-          w *= (hcDiff === 0 ? 2.4 : ((probH >= 48 && hg > ag) || (probA >= 46 && hg < ag) ? 0.95 : 0.35));
-        } else if (recHandicap.endsWith('负')) {
-          w *= (hcDiff < 0 ? 2.4 : (hg < ag ? 0.9 : 0.35));
+        if (primaryDir === 'H') {
+          if (hg <= ag) return 0.15;
+          w = 2.8;
+          if (recHandicap.endsWith('胜') && hcDiff > 0) w *= 1.6;
+          else if (recHandicap.endsWith('平') && hcDiff === 0) w *= 1.6;
+        } else if (primaryDir === 'A') {
+          if (hg >= ag) return 0.15;
+          w = 2.8;
+          if (recHandicap.endsWith('负') && hcDiff < 0) w *= 1.6;
+          else if (recHandicap.endsWith('平') && hcDiff === 0) w *= 1.6;
+        } else {
+          if (hg !== ag) return 0.2;
+          w = 2.8;
         }
-        if (probH >= 50 && hg > ag) w *= 1.35;
-        else if (probA >= 46 && hg < ag) w *= 1.35;
-        else if (probD >= 30 && hg === ag) w *= 1.25;
         return w;
       }
       const dirSortedScores = [...allScores].sort((x, y) => (y.pct * scoreAlignWeight(y.label)) - (x.pct * scoreAlignWeight(x.label)));
