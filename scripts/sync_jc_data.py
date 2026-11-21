@@ -12,6 +12,8 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 }
 
+WEEKDAY_MAP = {"周一": 0, "周二": 1, "周三": 2, "周四": 3, "周五": 4, "周六": 5, "周日": 6}
+
 
 def load_existing():
     if os.path.exists(DATA_PATH):
@@ -23,36 +25,52 @@ def load_existing():
     return {"latestDate": "", "updatedAt": "", "issuesByDate": {}, "matchResults": {}}
 
 
+def resolve_issue_date(wk_prefix):
+    now = datetime.now(BJ_TZ).date()
+    target_wd = WEEKDAY_MAP.get(wk_prefix)
+    if target_wd is None:
+        return now.strftime("%Y-%m-%d")
+    diff = (target_wd - now.weekday()) % 7
+    if diff >= 5:
+        diff -= 7
+    return (now + timedelta(days=diff)).strftime("%Y-%m-%d")
+
+
 def parse_500_schedule():
     url = "https://trade.500.com/jczq/"
     resp = requests.get(url, headers=HEADERS, timeout=20)
-    resp.encoding = resp.apparent_encoding or "gbk"
+    resp.encoding = "gbk" if "gb" in (resp.apparent_encoding or "").lower() else (resp.apparent_encoding or "utf-8")
     soup = BeautifulSoup(resp.text, "html.parser")
-    today_str = datetime.now(BJ_TZ).strftime("%Y-%m-%d")
 
-    matches = []
-    for tr in soup.select("tr.bet-tb-tr, tr"):
+    grouped = {}
+    for tr in soup.select("tr"):
         txt = tr.get_text(" ", strip=True)
-        code_m = re.search(r"(周[一二三四五六日]\s*\d{3})", txt)
+        code_m = re.search(r"(周[一二三四五六日])\s*(\d{3})", txt)
         if not code_m:
             continue
-        code = re.sub(r"\s+", " ", code_m.group(1)).strip()
-        vs_m = re.search(r"(?:\[\d+\])?([^\s\[\]]+)\s+VS\s+([^\s\[\]]+)(?:\[\d+\])?", txt, re.I)
+        wk_prefix, num = code_m.group(1), code_m.group(2)
+        code = f"{wk_prefix} {num}"
+        issue_date = resolve_issue_date(wk_prefix)
+
+        clean_txt = txt.replace("↑", "").replace("↓", "")
+        vs_m = re.search(r"(?:\[\d+\])?([^\s\[\]]+)\s+VS\s+([^\s\[\]]+)(?:\[\d+\])?", clean_txt, re.I)
         if not vs_m:
             continue
-        home, away = vs_m.group(1).strip(), vs_m.group(2).strip()
-        times = re.findall(r"\b\d{2}:\d{2}\b", txt)
+        home = re.sub(r"^\[\d+\]", "", vs_m.group(1)).strip()
+        away = re.sub(r"\[\d+\]$", "", vs_m.group(2)).strip()
+
+        times = re.findall(r"\b\d{2}:\d{2}\b", clean_txt)
         kickoff = times[0] if times else "23:00"
-        league_m = re.search(r"周[一二三四五六日]\s*\d{3}\s+(\S+)", txt)
+        league_m = re.search(r"周[一二三四五六日]\s*\d{3}\s+(\S+)", clean_txt)
         league = league_m.group(1) if league_m else "竞彩足球"
-        nums = re.findall(r"\b\d+\.\d{2}\b", txt)
+        nums = re.findall(r"(\d+\.\d{2})", clean_txt)
         odds0 = {"h": float(nums[0]), "d": float(nums[1]), "a": float(nums[2])} if len(nums) >= 3 else {"h": 2.10, "d": 3.30, "a": 3.10}
         odds_hc = {"h": float(nums[3]), "d": float(nums[4]), "a": float(nums[5])} if len(nums) >= 6 else {"h": 3.50, "d": 3.40, "a": 1.85}
-        hc_m = re.search(r"\s([+-]?\d)\s+\d+\.\d{2}", txt)
+        hc_m = re.search(r"\s([+-]?\d)\s+\d+\.\d{2}", clean_txt)
         handicap = int(hc_m.group(1)) if hc_m else -1
 
-        mid = re.sub(r"[^a-zA-Z0-9]", "", f"{today_str}_{code}")
-        matches.append({
+        mid = re.sub(r"[^a-zA-Z0-9]", "", f"{issue_date}_{code}")
+        grouped.setdefault(issue_date, []).append({
             "id": mid, "code": code, "league": league, "group": "官方竞彩",
             "kickoff": kickoff, "cutoff": kickoff, "status": "未开赛",
             "home": home, "away": away, "homeRank": "--", "awayRank": "--",
@@ -66,7 +84,7 @@ def parse_500_schedule():
             "h2h": "已同步最新官方胜平负与让球赔率。", "homeMotiv": 75, "awayMotiv": 72,
             "motivationNote": "GitHub Actions 自动同步场次：已接入最新官方赔率。"
         })
-    return today_str, matches
+    return grouped
 
 
 def parse_163_results(store):
@@ -100,10 +118,13 @@ def main():
     store = load_existing()
     now_str = datetime.now(BJ_TZ).strftime("%Y-%m-%d %H:%M:%S")
     try:
-        issue_date, matches = parse_500_schedule()
-        if matches:
-            store.setdefault("issuesByDate", {})[issue_date] = matches
-            store["latestDate"] = issue_date
+        grouped = parse_500_schedule()
+        if grouped:
+            for d, mlist in grouped.items():
+                if mlist:
+                    store.setdefault("issuesByDate", {})[d] = mlist
+            today_str = datetime.now(BJ_TZ).strftime("%Y-%m-%d")
+            store["latestDate"] = today_str if today_str in grouped else sorted(grouped.keys())[0]
     except Exception as e:
         print("Schedule sync warning:", e)
 
