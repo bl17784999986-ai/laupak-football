@@ -2158,11 +2158,13 @@
       lossScores.push(buildScoreObj('负其他', lossOtherPct));
 
       const allScores = [...winScores, ...drawScores, ...lossScores];
-      // Scoreline alignment strictly anchored to primary 1X2 direction first, then Handicap margin
+      // Scoreline alignment: 2 Primary-Direction High-Freq Scores + 1 Hedge/1-Goal Tolerance Score + Deep-Handicap "Other" support
       const primaryDir = (probH >= probA && probH >= probD) ? 'H' : (probA >= probH && probA >= probD) ? 'A' : 'D';
+      const isDeepHome = m.handicap <= -2 || probH >= 75;
+      const isDeepAway = m.handicap >= 2 || probA >= 75;
       function scoreAlignWeight(lbl) {
-        if (lbl === '胜其他') return primaryDir === 'H' ? 0.9 : 0.1;
-        if (lbl === '负其他') return primaryDir === 'A' ? 0.9 : 0.1;
+        if (lbl === '胜其他') return (primaryDir === 'H' && isDeepHome) ? 3.2 : (primaryDir === 'H' ? 0.9 : 0.1);
+        if (lbl === '负其他') return (primaryDir === 'A' && isDeepAway) ? 3.2 : (primaryDir === 'A' ? 0.9 : 0.1);
         if (lbl === '平其他') return primaryDir === 'D' ? 0.5 : 0.05;
         const [hg, ag] = lbl.split(':').map(Number);
         const hcDiff = hg + m.handicap - ag;
@@ -2170,13 +2172,13 @@
         if (primaryDir === 'H') {
           if (hg <= ag) return 0.15;
           w = 2.8;
-          if (recHandicap.endsWith('胜') && hcDiff > 0) w *= 1.6;
-          else if (recHandicap.endsWith('平') && hcDiff === 0) w *= 1.6;
+          if (recHandicap.endsWith('胜') && hcDiff > 0) w *= 1.5;
+          else if (recHandicap.endsWith('平') && hcDiff === 0) w *= 1.5;
         } else if (primaryDir === 'A') {
           if (hg >= ag) return 0.15;
           w = 2.8;
-          if (recHandicap.endsWith('负') && hcDiff < 0) w *= 1.6;
-          else if (recHandicap.endsWith('平') && hcDiff === 0) w *= 1.6;
+          if (recHandicap.endsWith('负') && hcDiff < 0) w *= 1.5;
+          else if (recHandicap.endsWith('平') && hcDiff === 0) w *= 1.5;
         } else {
           if (hg !== ag) return 0.2;
           w = 2.8;
@@ -2184,10 +2186,34 @@
         return w;
       }
       const dirSortedScores = [...allScores].sort((x, y) => (y.pct * scoreAlignWeight(y.label)) - (x.pct * scoreAlignWeight(x.label)));
-      const topPoissonScores = dirSortedScores.slice(0, 3).map(x => ({
+      const primaryTwo = dirSortedScores.slice(0, 2);
+      const pickedLabels = new Set(primaryTwo.map(x => x.label));
+
+      // Slot 3: Smart Hedge / Tolerance Scoreline (Draw hedge when upset/draw risk is elevated, or 1-goal win when deep favorite)
+      let hedgeCandidate = null;
+      const remaining = allScores.filter(x => !pickedLabels.has(x.label));
+      if (primaryDir !== 'D' && (upsetScore >= 42 || probD >= 26)) {
+        // High-frequency draw hedge (1:1 or 0:0)
+        hedgeCandidate = remaining
+          .filter(x => x.label.includes(':') && x.label.split(':')[0] === x.label.split(':')[1])
+          .sort((a, b) => b.pct - a.pct)[0];
+      } else if (primaryDir === 'H' && !isDeepHome) {
+        // Best 1-goal win (2:1 / 1:0) or draw
+        hedgeCandidate = remaining
+          .filter(x => x.label.includes(':') && ((+x.label.split(':')[0] - +x.label.split(':')[1]) === 1 || x.label === '1:1'))
+          .sort((a, b) => b.pct - a.pct)[0];
+      } else if (primaryDir === 'A' && !isDeepAway) {
+        hedgeCandidate = remaining
+          .filter(x => x.label.includes(':') && ((+x.label.split(':')[1] - +x.label.split(':')[0]) === 1 || x.label === '1:1'))
+          .sort((a, b) => b.pct - a.pct)[0];
+      }
+      if (!hedgeCandidate) hedgeCandidate = dirSortedScores[2];
+
+      const topPoissonScores = [...primaryTwo, hedgeCandidate].map((x, idx) => ({
         score: x.label.replace(':', '-'),
         pct: `${x.pct.toFixed(0)}%`,
-        odds: x.odds
+        odds: x.odds,
+        hedge: idx === 2 && hedgeCandidate.label !== dirSortedScores[2].label
       }));
 
       // Half-Time / Full-Time (9 options)
@@ -2873,8 +2899,8 @@
             <div class="text-[11px] text-slate-400 mb-1.5">高频比分推演（泊松模型）</div>
             <div class="flex items-center gap-1.5 flex-wrap">
               ${a.scores.map(s => `
-                <span class="px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-xs font-bold text-white tabular-nums">
-                  ${s.score} <span class="text-[10px] font-normal text-emerald-400">${s.pct}</span>
+                <span class="px-2 py-1 rounded-lg bg-slate-900 border ${s.hedge ? 'border-amber-500/40' : 'border-slate-700'} text-xs font-bold text-white tabular-nums">
+                  ${s.score}${s.hedge ? '<span class="text-[9px] text-amber-300 ml-0.5">防</span>' : ''} <span class="text-[10px] font-normal text-emerald-400">${s.pct}</span>
                 </span>
               `).join('')}
             </div>
