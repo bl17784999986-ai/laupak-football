@@ -1619,7 +1619,7 @@
       '2026-11-23': JSON.parse(JSON.stringify(MONDAY23_MATCHES)),
       '2026-11-24': JSON.parse(JSON.stringify(TUESDAY24_MATCHES))
     };
-    const DATA_VERSION = '2026-11-24-v1';
+    const DATA_VERSION = '2026-11-24-v2';
     try {
       const prevVer = localStorage.getItem('jc_sim_data_ver');
       if (prevVer !== DATA_VERSION) {
@@ -1765,7 +1765,16 @@
       const savedMiss = localStorage.getItem('jc_sim_miss_notes_v1');
       if (savedMiss) missReasons = JSON.parse(savedMiss);
       const savedRes = localStorage.getItem('jc_sim_results_v1');
-      if (savedRes) matchResults = { ...matchResults, ...JSON.parse(savedRes) };
+      if (savedRes) {
+        const parsedRes = JSON.parse(savedRes);
+        Object.keys(parsedRes).forEach(k => {
+          const r = parsedRes[k];
+          if (r && Number(r.homeGoals) <= 12 && Number(r.awayGoals) <= 12) {
+            matchResults[k] = r;
+          }
+        });
+        localStorage.setItem('jc_sim_results_v1', JSON.stringify(matchResults));
+      }
     } catch (e) {}
 
     function saveReviewRecords() {
@@ -1782,7 +1791,7 @@
 
     function getMatchLiveStatus(m) {
       const res = matchResults[m.id];
-      if (res && res.homeGoals !== '' && res.awayGoals !== '') {
+      if (res && res.homeGoals !== '' && res.awayGoals !== '' && Number(res.homeGoals) <= 12 && Number(res.awayGoals) <= 12) {
         return {
           text: `已完场 ${res.homeGoals}:${res.awayGoals}`,
           cls: 'text-emerald-400 font-bold',
@@ -3438,7 +3447,12 @@
           saveIssuesByDate();
         }
         if (data.matchResults && typeof data.matchResults === 'object') {
-          matchResults = { ...matchResults, ...data.matchResults };
+          Object.keys(data.matchResults).forEach(k => {
+            const r = data.matchResults[k];
+            if (r && r.homeGoals !== '' && r.awayGoals !== '' && Number(r.homeGoals) <= 12 && Number(r.awayGoals) <= 12) {
+              matchResults[k] = r;
+            }
+          });
           saveMatchResults();
           // Auto-settle any matching review legs
           Object.keys(matchResults).forEach(mid => {
