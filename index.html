@@ -377,11 +377,17 @@
             </h2>
             <p class="text-[11px] text-slate-400">全量胜平负 / 半全场 / 比分推荐与命中率统计</p>
           </div>
-          <select id="digestFilterSelect" class="px-2 py-1 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-200 focus:outline-none">
-            <option value="ALL">全部场次</option>
-            <option value="SETTLED">已出赛果</option>
-            <option value="MISS">仅看中黑复盘</option>
-          </select>
+          <div class="flex items-center gap-1.5 flex-wrap justify-end">
+            <select id="digestFilterSelect" class="px-2 py-1 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-200 focus:outline-none">
+              <option value="ALL">全部场次</option>
+              <option value="UNSETTLED">仅看未开赛</option>
+              <option value="SETTLED">已出赛果</option>
+              <option value="MISS">仅看中黑复盘</option>
+            </select>
+            <button id="btnExportAllDigest" type="button" class="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 border border-emerald-500/40 text-[11px] font-medium transition whitespace-nowrap" title="一键复制当期全盘推演文字，可直接粘贴给 Gemini 生成组合方案">
+              📋 一键导出全盘
+            </button>
+          </div>
         </div>
 
         <!-- Accuracy KPI Bar -->
@@ -4546,6 +4552,66 @@
     }
 
     document.getElementById('digestFilterSelect').addEventListener('change', renderAllMatchDigest);
+    document.getElementById('btnExportAllDigest').addEventListener('click', async () => {
+      const filterMode = document.getElementById('digestFilterSelect')?.value || 'ALL';
+      const list = matches.filter(m => {
+        const res = matchResults[m.id];
+        const hasRes = res && res.homeGoals !== '' && res.awayGoals !== '';
+        if (filterMode === 'UNSETTLED') return !hasRes;
+        if (filterMode === 'SETTLED') return hasRes;
+        if (filterMode === 'MISS') {
+          if (!hasRes) return false;
+          const a = computeAnalysis(m);
+          const hg = parseInt(res.homeGoals, 10), ag = parseInt(res.awayGoals, 10);
+          const actSpf = hg > ag ? '主胜' : hg === ag ? '平局' : '客胜';
+          const spfHit = a.recPrimary.includes(actSpf);
+          const scStr = `${hg}:${ag}`;
+          const scHit = a.scores.some(s => s.score === scStr);
+          return !spfHit || !scHit;
+        }
+        return true;
+      });
+      if (!list.length) {
+        showToast('当前筛选条件下暂无可导出的赛事');
+        return;
+      }
+      const header = [
+        `【竞彩足球全盘四维推演汇总】期次：${activeDate}（共 ${list.length} 场 · 筛选：${document.getElementById('digestFilterSelect')?.selectedOptions?.[0]?.text || '全部场次'}）`,
+        `请基于以下各场四维模型概率、赔率、爆冷指数与比分/半全场推演，帮我进一步筛选稳胆并构建优化的混合过关组合方案：`,
+        `==================================================`
+      ];
+      const blocks = list.map(m => {
+        const a = computeAnalysis(m);
+        const st = getMatchLiveStatus(m);
+        const res = matchResults[m.id];
+        const hcSign = m.handicap > 0 ? `+${m.handicap}` : `${m.handicap}`;
+        const htStr = (res && res.htHome !== undefined && res.htHome !== '' && res.htAway !== undefined && res.htAway !== '')
+          ? `（半场 ${res.htHome}:${res.htAway}）` : '';
+        const lines = [
+          `【${m.code}】${m.home} vs ${m.away}｜${m.league}｜开赛 ${m.kickoff}｜状态：${st.text}${htStr}`,
+          `  赔率：胜平负 ${m.odds0.h.toFixed(2)}/${m.odds0.d.toFixed(2)}/${m.odds0.a.toFixed(2)}｜让球(${hcSign}) ${m.oddsHc.h.toFixed(2)}/${m.oddsHc.d.toFixed(2)}/${m.oddsHc.a.toFixed(2)}`,
+          `  四维概率：主胜 ${a.probH}% / 平 ${a.probD}% / 客胜 ${a.probA}%｜让球优选：${a.recHandicap}（${a.hcProbH}%/${a.hcProbD}%/${a.hcProbA}%）｜爆冷指数：${a.upsetScore}/100`,
+          `  核心推演：胜平负=${a.recPrimary}（次选:${a.recSecondary}）｜半全场=${(a.topHtft || []).slice(0, 2).map(x => `${x.label}(${x.odds})`).join(' / ')}｜比分=${a.scores.map(x => x.score).join(' / ')}｜总进球=${(a.topGoals || []).slice(0, 3).map(x => x.label).join(' / ')}`
+        ];
+        if (m.motivationNote) lines.push(`  盘口备注：${m.motivationNote}`);
+        return lines.join('\n');
+      });
+      const fullText = [...header, ...blocks].join('\n\n');
+      try {
+        await navigator.clipboard.writeText(fullText);
+        showToast(`已一键复制 ${list.length} 场全盘推演文字，可直接粘贴给 Gemini！`);
+      } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = fullText;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast(`已一键复制 ${list.length} 场全盘推演文字，可直接粘贴给 Gemini！`);
+      }
+    });
 
     // Initial Boot
     renderLeagueFilters();
